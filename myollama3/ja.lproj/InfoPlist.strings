@@ -1,0 +1,9 @@
+/* 
+  InfoPlist.strings
+  myollama3
+
+  Created by BillyPark on 5/13/25.
+  
+*/
+CFBundleDisplayName = "私のオラマ";
+NSPhotoLibraryUsageDescription = "写真を選択してメッセージとともに送信するには、フォトアルバムの使用許可が必要です";

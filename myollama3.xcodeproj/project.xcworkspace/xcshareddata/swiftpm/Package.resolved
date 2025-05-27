@@ -1,0 +1,51 @@
+{
+  "originHash" : "bd4936cbdcca99321a42d7a56f0370217562022508af6b1eb629bc8b0c30635a",
+  "pins" : [
+    {
+      "identity" : "networkimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/NetworkImage",
+      "state" : {
+        "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
+        "version" : "6.0.1"
+      }
+    },
+    {
+      "identity" : "swift-cmark",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-cmark",
+      "state" : {
+        "revision" : "b022b08312decdc46585e0b3440d97f6f22ef703",
+        "version" : "0.6.0"
+      }
+    },
+    {
+      "identity" : "swift-markdown-ui",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gonzalezreal/swift-markdown-ui",
+      "state" : {
+        "revision" : "5f613358148239d0292c0cef674a3c2314737f9e",
+        "version" : "2.4.1"
+      }
+    },
+    {
+      "identity" : "swiftui-toasts",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sunghyun-k/swiftui-toasts",
+      "state" : {
+        "revision" : "2ec47878af20f906c065176e8e080ba33f49eabf",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "swiftui-window-overlay",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sunghyun-k/swiftui-window-overlay.git",
+      "state" : {
+        "revision" : "46739300713772a62a3bf31d77f8f23ba9cf61f7",
+        "version" : "1.0.2"
+      }
+    }
+  ],
+  "version" : 3
+}

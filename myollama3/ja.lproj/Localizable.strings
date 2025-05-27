@@ -1,0 +1,170 @@
+/* 
+  Localizable.strings
+  myollama3
+
+  Created by BillyPark on 5/13/25.
+  
+*/
+"l_new_conversation" = "新しい会話を始める";
+"l_my_ollama" = "オラマネジャー";
+"l_recent_conversations" = "最近の会話";
+"l_loading_conversations" = "会話を読み込み中...";
+"l_no_search_results" = "検索結果がありません";
+"l_no_saved_conversations" = "保存された会話はありません";
+"l_search_conversations" = "会話を検索...";
+"l_error" = "エラー";
+"l_settings" = "設定";
+"l_ollama_server_settings" = "Ollamaサーバー設定";
+"l_check_server_connection" = "サーバー接続を確認";
+"l_connected_to_server" = "サーバーに接続しました";
+"l_connection_error" = "接続エラー: %@";
+"l_llm_instructions" = "LLM指示";
+"l_llm_instructions_desc" = "AIモデルの基本的な行動方針を指示する内容です。";
+"l_temperature" = "Temperature";
+"l_temperature_desc" = "値が高いほど多様で創造的な応答を生成します。(0.1~2.0)";
+"l_top_p" = "Top P";
+"l_top_p_desc" = "次のトークンを選択する際に確率分布の上位P%内からのみ選択します。(0.1~1.0)";
+"l_top_k" = "Top K";
+"l_top_k_desc" = "次のトークンを選択する際に確率が最も高いK個のトークンの中からのみ選択します。(1~100)";
+"l_reset" = "リセット";
+"l_reset_llm_settings" = "LLM設定データをリセット";
+"l_reset_llm_desc" = "LLM設定データがリセットされます。";
+"l_delete" = "削除";
+"l_delete_all_conversations" = "すべての会話データを削除";
+"l_delete_all_desc" = "すべての会話履歴が永久に削除されます。";
+"l_app_settings" = "アプリ設定";
+"l_ollama_server_config" = "Ollamaサーバーを外部からアクセス可能にする方法";
+"l_app_info" = "アプリ情報";
+"l_version" = "バージョン";
+"l_about_myollama" = "オラマネジャーについて";
+"l_save" = "保存";
+"l_checking_server" = "サーバー接続を確認中...";
+"l_server_check_complete" = "サーバー接続を確認しました。設定が保存されました。";
+"l_server_connection_failed" = "サーバー接続失敗";
+"l_save_anyway" = "それでも保存";
+"l_connection_failed_prompt" = "サーバーに接続できませんでした。それでも設定を保存しますか？";
+"l_delete_all_conversations_title" = "すべての会話データを削除";
+"l_cancel" = "キャンセル";
+"l_delete_confirm" = "削除";
+"l_delete_all_warning" = "すべての会話履歴が永久に削除されます。この操作は元に戻せません。";
+"l_about_app" = "アプリについて";
+"l_about_app_desc" = "オラマネジャーはローカルで実行されるOllama APIを活用して、様々なAIモデルと会話できるiOSアプリです。\n\nこのアプリはプライバシーを重視するユーザーのために設計されており、すべての会話内容はユーザーのデバイスにのみ保存されます。インターネット接続はローカルOllamaサーバーとの通信にのみ使用されます。";
+"l_key_features" = "主な機能";
+"l_feature_models" = "様々なAIモデル対応";
+"l_feature_models_desc" = "Ollamaが提供する様々なモデル（Llama、Mistral、Qwenなど）と会話できます。";
+"l_feature_image" = "画像認識機能";
+"l_feature_image_desc" = "画像を添付してAIに画像の説明や分析を要求できます。";
+"l_feature_history" = "会話履歴の保存";
+"l_feature_history_desc" = "すべての会話は自動的に保存され、後で呼び出して続けることができます。";
+"l_feature_share" = "会話の共有";
+"l_feature_share_desc" = "AIとの会話をテキスト形式でエクスポートして共有できます。";
+"l_feature_params" = "AI応答の調整";
+"l_feature_params_desc" = "Temperature、Top P、Top Kなどのパラメータを調整してAI応答の創造性と一貫性を調整できます。";
+"l_how_to_use" = "使用方法";
+"l_step1" = "Ollamaサーバー設定";
+"l_step1_desc" = "設定メニューでローカルOllamaサーバーのURLを入力します。(例: http://192.168.0.1:11434)";
+"l_step2" = "モデル選択";
+"l_step2_desc" = "会話画面の上部で使用するAIモデルを選択します。";
+"l_step3" = "会話開始";
+"l_step3_desc" = "メッセージ入力欄に質問や指示を入力して送信ボタンを押します。";
+"l_step4" = "画像添付";
+"l_step4_desc" = "カメラアイコンをタップして画像を添付できます。";
+"l_step5" = "会話管理";
+"l_step5_desc" = "ホーム画面で過去の会話をタップして続けるか、左にスワイプして削除できます。";
+"l_tips" = "活用のヒント";
+"l_tip1" = "詳細な指示";
+"l_tip1_desc" = "AIに具体的で明確な指示を出すとより正確な応答が得られます。";
+"l_tip2" = "モデル別特性活用";
+"l_tip2_desc" = "各モデルには強みが異なります。コーディングはCodeLlama、一般会話はMistralやLlamaが適しています。";
+"l_tip3" = "パラメータ調整";
+"l_tip3_desc" = "創造的な応答が必要な場合はTemperatureを上げ、正確な応答が必要な場合は下げてください。";
+"l_tip4" = "画像解像度";
+"l_tip4_desc" = "画像認識では、小さいまたはぼやけた画像よりも、鮮明で主要対象がよく見える画像を使用してください。";
+"l_system_requirements" = "システム要件";
+"l_system_requirements_desc" = "• iOS 16.0以上\n• ローカルネットワークで実行中のOllamaサーバー\n• インターネット接続（ローカルサーバー通信用）";
+"l_privacy" = "プライバシー保護";
+"l_privacy_desc" = "オラマネジャーはユーザーのプライバシー保護を最優先します：\n\n• すべての会話内容はユーザーのデバイスにのみ保存されます。\n• 外部サーバーにデータを送信しません。\n• すべてのAI処理はローカルOllamaサーバーで行われます。";
+"l_developer_info" = "開発者情報";
+"l_send_feedback" = "開発者にフィードバックを送る";
+"l_myollama" = "オラマネジャー";
+"l_local_llm_assistant" = "ローカルLLM会話アシスタント";
+"l_delete_message" = "メッセージ削除";
+"l_delete_message_confirm" = "このメッセージを削除しますか？";
+"l_thinking" = "考え中...";
+"l_cancel_generation" = "キャンセル";
+"l_error_prefix" = "エラー: %@";
+"l_loading_models" = "サーバーからモデルリストを読み込み中...";
+"l_model_load_failed" = "モデルリストの読み込みに失敗しました";
+"l_check_server_and_retry" = "サーバー接続を確認して再試行してください";
+"l_retry" = "再試行";
+"l_no_conversations" = "共有する会話がありません";
+"l_model_changed" = "モデルが%@に変更されました。";
+"l_cannot_load_models" = "サーバーからモデルを読み込めません: %@";
+"l_cannot_delete_message" = "メッセージ削除中にエラーが発生しました: %@";
+"l_cannot_load_conversations" = "会話リストを読み込めません: %@";
+"l_cannot_delete_conversation" = "会話を削除できません: %@";
+"l_conversation" = "会話";
+"l_question" = "質問 %d";
+"l_answer" = "回答";
+"l_image" = "[画像]";
+"l_image_attached" = "[画像添付済み]";
+"l_generated_time" = "生成時間: %@";
+"l_model" = "モデル: %@";
+"l_server" = "サーバー: %@";
+"l_user_cancelled" = "[ユーザーによりキャンセルされました]";
+"l_error_occurred" = "[エラーが発生しました]";
+"l_response_generation_failed" = "応答の生成に失敗しました。";
+"l_image_compression_failed" = "画像を圧縮できません";
+"l_base64_decoding_failed" = "Base64デコードに失敗しました";
+"l_index_out_of_range" = "インデックスが範囲外です";
+"l_conversation_history_error" = "会話履歴の読み込み中にエラーが発生しました: %@";
+"l_last_model_error" = "最後に使用したモデルの取得中にエラーが発生しました: %@";
+"l_first_question_error" = "グループの最初の質問を取得中にエラーが発生しました: %@";
+"l_unknown_server" = "不明なサーバー";
+"l_models_error" = "モデルリストの取得中にエラーが発生しました: %@";
+"l_all_data_deleted" = "すべての会話データが削除されました。";
+"l_data_deletion_failed" = "データ削除に失敗しました: %@";
+"l_ok" = "OK";
+"l_default_instruction" = "あなたは役立つアシスタントです。正確かつ簡潔に答えてください。";
+"l_url_format_invalid" = "URLの形式が無効です。";
+
+/* ウェルカム画面 */
+"l_welcome" = "オラマネジャーへようこそ";
+"l_important" = "重要な設定が必要です";
+"l_welcome_server_setup_required" = "オラマネジャーを使用する前に、Ollamaサーバーのアドレスを設定する必要があります。";
+"l_welcome_server_explanation" = "オラマネジャーはローカルのOllamaサーバーに接続してAIモデルにアクセスします。有効なサーバーアドレスがないと、AIモデルと会話できません。";
+"l_setup_steps" = "設定手順";
+"l_setup_server_now" = "今すぐサーバーを設定する";
+"l_continue_without_setup" = "設定せずに続ける";
+"l_done" = "完了";
+
+/* WelcomeView コメント */
+"l_welcome_page_count" = "画面ページ数";
+"l_welcome_skip_button" = "スキップボタン";
+"l_welcome_header" = "ウェルカム画面ヘッダー";
+"l_welcome_first_page" = "最初のページ：サーバー設定の重要性";
+"l_welcome_second_page" = "2ページ目：設定方法";
+"l_welcome_third_page" = "3ページ目：主な機能";
+"l_welcome_setup_button" = "設定ボタン";
+"l_welcome_skip_button_2" = "スキップボタン";
+"l_welcome_feature_intro" = "機能紹介ビュー作成関数";
+"l_welcome_mark_as_seen" = "ウェルカム画面を表示済みとして閉じる";
+"l_welcome_page_view" = "ページビュー";
+
+/* MessageBubble */
+"l_message_question_answer_format" = "質問:\n%@\n\n回答:\n%@";
+"l_message_image" = "[画像]";
+"l_message_image_attached" = "[画像添付]";
+"l_message_copy" = "コピー";
+"l_message_share_qa" = "質問と回答を共有";
+"l_message_delete" = "削除";
+"l_message_image_options" = "画像オプション";
+"l_message_image_what_to_do" = "この画像で何をしますか？";
+"l_message_save" = "保存";
+"l_message_image_saved" = "画像が写真アルバムに保存されました";
+"l_message_share" = "共有";
+"l_message_cancel" = "キャンセル";
+
+/* MessageInputView */
+"l_message_input_placeholder" = "メッセージを入力してください...";
+

@@ -1,0 +1,9 @@
+/* 
+  InfoPlist.strings
+  myollama3
+
+  Created by BillyPark on 5/13/25.
+  
+*/
+CFBundleDisplayName = "OllaManager";
+NSPhotoLibraryUsageDescription = "Photo album usage permission is required to select photos and send with message";

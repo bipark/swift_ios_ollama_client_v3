@@ -8,7 +8,6 @@
 import SwiftUI
 import PhotosUI
 
-
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var selectedImage: UIImage?
     @Environment(\.dismiss) private var dismiss
@@ -21,7 +20,6 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
         
         private func resizeImage(_ image: UIImage, targetWidth: CGFloat = 800) -> UIImage {
-
             let size = image.size
             
             if size.width <= targetWidth {
@@ -49,7 +47,6 @@ struct ImagePicker: UIViewControllerRepresentable {
                 provider.loadObject(ofClass: UIImage.self) { [weak self] image, error in
                     DispatchQueue.main.async {
                         if let image = image as? UIImage {
-
                             let resizedImage = self?.resizeImage(image) ?? image
                             self?.parent.selectedImage = resizedImage
                         }

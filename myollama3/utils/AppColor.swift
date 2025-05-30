@@ -1,8 +1,6 @@
 import SwiftUI
 
-
 struct AppColor {
-
     static func adaptiveColor(light: Color, dark: Color) -> Color {
         return Color(UIColor { traitCollection in
             return traitCollection.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
@@ -33,7 +31,6 @@ struct AppColor {
         return primary
     }
 }
-
 
 extension Color {
     static var appPrimary: Color {

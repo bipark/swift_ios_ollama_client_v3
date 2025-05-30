@@ -165,3 +165,8 @@
 
 /* MessageInputView */
 "l_message_input_placeholder" = "Type a message...";
+"l_attachment_options" = "Attachment Options";
+"l_attachment_how" = "How would you like to attach?";
+"l_photo_library" = "Photo Library";
+"l_take_photo" = "Take Photo";
+"l_choose_files" = "Choose Files";

@@ -22,7 +22,6 @@ class SettingsManager: ObservableObject {
     private let topKKey = "ollama_top_k"
     
     init() {
-
         self.baseURL = UserDefaults.standard.string(forKey: baseURLKey) ?? "http://192.168.0.1:11434"
         self.instruction = UserDefaults.standard.string(forKey: instructionKey) ?? "l_default_instruction".localized
         self.temperature = UserDefaults.standard.double(forKey: temperatureKey)
@@ -187,6 +186,7 @@ struct SettingsView: View {
                 .foregroundColor(AppColor.link)
             }
             
+            // 전체 데이터 삭제 섹션 추가
             Section(header: Text("l_delete".localized), footer: Text("l_delete_all_desc".localized) ) {
                 Button(action: {
                     showDeleteConfirmation = true

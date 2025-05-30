@@ -5,5 +5,6 @@
   Created by BillyPark on 5/13/25.
   
 */
-CFBundleDisplayName = "My LLM";
+CFBundleDisplayName = "올라매니저";
 NSPhotoLibraryUsageDescription = "사진을 선택하여 메시지와 함께 전송하려면 사진 앨범 사용 권한이 필요합니다.";
+NSCameraUsageDescription = "사진을 촬영하여 메시지와 함께 전송하려면 카메라 사용권한이 필요합니다";

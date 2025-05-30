@@ -167,3 +167,8 @@
 
 /* MessageInputView */
 "l_message_input_placeholder" = "메시지를 입력하세요...";
+"l_attachment_options" = "첨부 옵션";
+"l_attachment_how" = "어떤 방식으로 첨부하시겠습니까?";
+"l_photo_library" = "포토앨범";
+"l_take_photo" = "사진찍기";
+"l_choose_files" = "파일선택";

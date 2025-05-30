@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct MessageInputView: View {
     @Binding var text: String
@@ -16,10 +17,15 @@ struct MessageInputView: View {
     var shouldFocus: Bool
     var onSend: () -> Void
     @Binding var selectedImage: UIImage?
+    @Binding var selectedPDFText: String?
+    @Binding var selectedTXTText: String?
     var isInputFocused: FocusState<Bool>.Binding
     
     @State private var showImagePicker: Bool = false
     @State private var showImagePreview: Bool = false
+    @State private var showAttachmentMenu: Bool = false
+    @State private var showCamera: Bool = false
+    @State private var showDocumentPicker: Bool = false
     @State private var textHeight: CGFloat = 40
     
     private func calculateTextHeight() -> CGFloat {
@@ -28,7 +34,7 @@ struct MessageInputView: View {
         
         guard !text.isEmpty else { return minHeight }
         
-        let availableWidth = UIScreen.main.bounds.width - 80 
+        let availableWidth = UIScreen.main.bounds.width - 80
         let font = UIFont.systemFont(ofSize: 16)
         
         let textSize = text.boundingRect(
@@ -38,7 +44,7 @@ struct MessageInputView: View {
             context: nil
         )
         
-        let calculatedHeight = textSize.height + 24 // 여백 포함
+        let calculatedHeight = textSize.height + 24
         return min(max(calculatedHeight, minHeight), maxHeight)
     }
     
@@ -59,6 +65,78 @@ struct MessageInputView: View {
                         
                         Button(action: {
                             self.selectedImage = nil
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.white)
+                                .background(Circle().fill(Color.black.opacity(0.6)))
+                        }
+                        .padding(4)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal)
+            }
+            
+            if let selectedPDFText = selectedPDFText {
+                HStack {
+                    ZStack(alignment: .topTrailing) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.red)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("PDF 문서")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                Text("\(selectedPDFText.count) 글자")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        
+                        Button(action: {
+                            self.selectedPDFText = nil
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.white)
+                                .background(Circle().fill(Color.black.opacity(0.6)))
+                        }
+                        .padding(4)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal)
+            }
+            
+            if let selectedTXTText = selectedTXTText {
+                HStack {
+                    ZStack(alignment: .topTrailing) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.plaintext.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.blue)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("텍스트 파일")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                Text("\(selectedTXTText.count) 글자")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        
+                        Button(action: {
+                            self.selectedTXTText = nil
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.white)
@@ -105,9 +183,9 @@ struct MessageInputView: View {
                 
                 VStack(spacing: 8) {
                     Button(action: {
-                        showImagePicker = true
+                        showAttachmentMenu = true
                     }) {
-                        Image(systemName: "photo")
+                        Image(systemName: "paperclip")
                             .font(.system(size: 20))
                             .foregroundColor(Color.appIcon)
                     }
@@ -126,12 +204,12 @@ struct MessageInputView: View {
                     .frame(width: 32, height: 32)
                     .background(
                         Circle().fill(
-                            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading 
+                            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading 
                             ? Color.gray 
                             : Color.appPrimary
                         )
                     )
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading)
                 }
                 .padding(.bottom, 4)
             }
@@ -156,6 +234,30 @@ struct MessageInputView: View {
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedImage: $selectedImage)
         }
+        .sheet(isPresented: $showCamera) {
+            CameraPicker(selectedImage: $selectedImage)
+        }
+        .sheet(isPresented: $showDocumentPicker) {
+            DocumentPicker(selectedImage: $selectedImage, selectedPDFText: $selectedPDFText, selectedTXTText: $selectedTXTText)
+        }
+        .actionSheet(isPresented: $showAttachmentMenu) {
+            ActionSheet(
+                title: Text("l_attachment_options".localized),
+                message: Text("l_attachment_how".localized),
+                buttons: [
+                    .default(Text("l_photo_library".localized)) {
+                        showImagePicker = true
+                    },
+                    .default(Text("l_take_photo".localized)) {
+                        showCamera = true
+                    },
+                    .default(Text("l_choose_files".localized)) {
+                        showDocumentPicker = true
+                    },
+                    .cancel(Text("l_cancel".localized))
+                ]
+            )
+        }
         .sheet(isPresented: $showImagePreview) {
             if let image = selectedImage {
                 NavigationView {
@@ -166,7 +268,7 @@ struct MessageInputView: View {
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("l_done".localized) {
+                                Button("Done") {
                                     showImagePreview = false
                                 }
                             }

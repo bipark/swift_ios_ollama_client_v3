@@ -21,7 +21,6 @@ struct ContentView: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack {
-
                 VStack(spacing: 20) {
                     Image(systemName: "bubble.left.and.bubble.right")
                         .imageScale(.large)
@@ -64,7 +63,6 @@ struct ContentView: View {
                     ChatView()
                 } else if destination.hasPrefix("Old") {
                     let conversationId = String(destination.dropFirst(3))
-
                     let conversation = conversations.first { $0.id == conversationId }
                     let baseUrl = conversation?.baseUrl != nil ? URL(string: conversation!.baseUrl!) : nil
                     
@@ -124,7 +122,6 @@ struct ContentView: View {
         
         Task {
             do {
-
                 let service = OllamaService()
                 let loadedConversations = try await service.getAllConversations()
                 
@@ -171,7 +168,6 @@ struct ContentView: View {
         
         Task {
             do {
-
                 let service = OllamaService()
                 
                 for id in idsToDelete {
@@ -188,7 +184,6 @@ struct ContentView: View {
         }
     }
 }
-
 
 struct RecentConversationsView: View {
     let conversations: [(id: String, date: Date, baseUrl: String?, firstQuestion: String, firstAnswer: String, engine: String?, image: String?)]
@@ -209,7 +204,6 @@ struct RecentConversationsView: View {
                     
                     Spacer()
                     
-
                     Button(action: {
                         withAnimation {
                             isSearching.toggle()
@@ -284,7 +278,6 @@ struct RecentConversationsView: View {
     }
 }
 
-
 struct ConversationRow: View {
     let conversation: (id: String, date: Date, baseUrl: String?, firstQuestion: String, firstAnswer: String, engine: String?, image: String?)
     var isPressed: Bool = false
@@ -298,7 +291,6 @@ struct ConversationRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-
             if let imageBase64 = conversation.image, let uiImage = convertBase64ToImage(imageBase64) {
                 Image(uiImage: uiImage)
                     .resizable()
@@ -313,7 +305,6 @@ struct ConversationRow: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-
                 Text(conversation.firstQuestion)
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -327,14 +318,12 @@ struct ConversationRow: View {
                 }
                 
                 HStack {
-
                     Text(dateFormatter.string(from: conversation.date))
                         .font(.caption)
                         .foregroundColor(.gray)
                     
                     if let engine = conversation.engine {
                         Spacer()
-
                         Text(engine)
                             .font(.caption2)
                             .foregroundColor(Color.appPrimary.opacity(0.7))
@@ -354,14 +343,13 @@ struct ConversationRow: View {
     
     private func convertBase64ToImage(_ base64String: String) -> UIImage? {
         guard let imageData = Data(base64Encoded: base64String) else {
-            print("Base64 decoding failed")
+            print("Base64 decode fail")
             return nil
         }
         
         return UIImage(data: imageData)
     }
 }
-
 
 struct ConversationItemView: View {
     let conversation: (id: String, date: Date, baseUrl: String?, firstQuestion: String, firstAnswer: String, engine: String?, image: String?)
@@ -372,7 +360,6 @@ struct ConversationItemView: View {
         ConversationRow(conversation: conversation, isPressed: isPressed)
             .contentShape(Rectangle())
             .onTapGesture {
-
                 isPressed = true
                 
                 let impactFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -380,7 +367,6 @@ struct ConversationItemView: View {
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isPressed = false
-
                     onTap()
                 }
             }

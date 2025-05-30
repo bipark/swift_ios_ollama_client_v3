@@ -18,17 +18,14 @@ struct MessageBubble: View {
     @State private var imageToShare: UIImage?
     @Environment(\.presentToast) private var presentToast
     
-    
     private func formatQnA() -> String {
         guard let index = allMessages.firstIndex(where: { $0.id == message.id }) else {
             return message.content
         }
         
         if message.isUser {
-
             if index + 1 < allMessages.count && !allMessages[index + 1].isUser {
                 var question = message.content
-                
                 if message.image != nil && question.isEmpty {
                     question = "l_message_image".localized
                 } else if message.image != nil {
@@ -38,10 +35,8 @@ struct MessageBubble: View {
                 return String(format: "l_message_question_answer_format".localized, question, answer)
             }
         } else {
-
             if index > 0 && allMessages[index - 1].isUser {
                 var question = allMessages[index - 1].content
-                
                 if allMessages[index - 1].image != nil && question.isEmpty {
                     question = "l_message_image".localized
                 } else if allMessages[index - 1].image != nil {
@@ -72,7 +67,6 @@ struct MessageBubble: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 8) {
-
                     if let image = message.image {
                         Image(uiImage: image)
                             .resizable()
@@ -80,7 +74,6 @@ struct MessageBubble: View {
                             .frame(maxWidth: 200, maxHeight: 200)
                             .cornerRadius(12)
                             .onTapGesture {
-
                                 showImageActions(image: image)
                             }
                     }
@@ -154,7 +147,6 @@ struct MessageBubble: View {
                     )
                 }
             } else {
-
                 VStack {
                     Markdown(message.content)
                         .padding(12)

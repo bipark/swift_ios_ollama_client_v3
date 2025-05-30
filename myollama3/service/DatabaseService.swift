@@ -8,8 +8,8 @@
 import Foundation
 import SQLite3
 
-
 class DatabaseService {
+    // MARK: - Properties
     private var db: OpaquePointer?
     private let dbPath: String
     
@@ -21,9 +21,8 @@ class DatabaseService {
         case insertFailed(String)
         case dataNotFound
     }
-        
+    
     init() {
-
         let fileURL = try! FileManager.default
             .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             .appendingPathComponent("ollama_chat.sqlite")
@@ -84,7 +83,6 @@ class DatabaseService {
         var insertStatement: OpaquePointer?
         
         if sqlite3_prepare_v2(db, insertStatementString, -1, &insertStatement, nil) == SQLITE_OK {
-
             let dateFormatter = ISO8601DateFormatter()
             let currentDate = dateFormatter.string(from: Date())
             

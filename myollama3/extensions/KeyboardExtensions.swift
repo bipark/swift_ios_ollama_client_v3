@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-
 extension UIApplication {
     func dismissKeyboard() {
         sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -17,13 +16,11 @@ extension UIApplication {
     }
 }
 
-
 extension View {
     func hideKeyboard() {
         UIApplication.shared.dismissKeyboard()
     }
 }
-
 
 struct DismissKeyboardOnTap: ViewModifier {
     var focusState: FocusState<Bool>.Binding
@@ -37,7 +34,6 @@ struct DismissKeyboardOnTap: ViewModifier {
             }
     }
 }
-
 
 extension View {
     func dismissKeyboardOnTap(focusState: FocusState<Bool>.Binding) -> some View {

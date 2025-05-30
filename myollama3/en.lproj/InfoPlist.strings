@@ -7,3 +7,4 @@
 */
 CFBundleDisplayName = "OllaManager";
 NSPhotoLibraryUsageDescription = "Photo album usage permission is required to select photos and send with message";
+NSCameraUsageDescription = "Camera permission is required to take pictures and send them with messages";

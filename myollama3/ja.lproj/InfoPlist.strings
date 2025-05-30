@@ -7,3 +7,4 @@
 */
 CFBundleDisplayName = "私のオラマ";
 NSPhotoLibraryUsageDescription = "写真を選択してメッセージとともに送信するには、フォトアルバムの使用許可が必要です";
+NSCameraUsageDescription = "写真を撮ってメッセージと共に送信するには、カメラのライセンスが必要です";

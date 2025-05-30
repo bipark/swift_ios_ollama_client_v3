@@ -167,4 +167,8 @@
 
 /* MessageInputView */
 "l_message_input_placeholder" = "メッセージを入力してください...";
-
+"l_attachment_options" = "添付オプション";
+"l_attachment_how" = "どのように添付しますか？";
+"l_photo_library" = "フォトアルバム";
+"l_take_photo" = "写真を撮る";
+"l_choose_files" = "ファイルを選択";

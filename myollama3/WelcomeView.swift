@@ -45,6 +45,7 @@ struct WelcomeView: View {
             .padding(.horizontal)
             
             TabView(selection: $currentPage) {
+                // "l_welcome_first_page".localized
                 featureView(
                     iconName: "exclamationmark.triangle.fill",
                     title: "l_important".localized,

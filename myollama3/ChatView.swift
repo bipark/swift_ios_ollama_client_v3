@@ -12,11 +12,9 @@ import Toasts
 import PhotosUI
 
 
-
 typealias Message = OllamaService.Message
 
 struct ChatView: View {
-
     @StateObject private var ollamaService: OllamaService
     
     @State private var newMessage = ""
@@ -33,6 +31,8 @@ struct ChatView: View {
     @State private var isModelLoading = true
     @Environment(\.presentToast) var presentToast
     @State private var selectedImage: UIImage? = nil
+    @State private var selectedPDFText: String? = nil
+    @State private var selectedTXTText: String? = nil
     @State private var showShareAllSheet = false
     
     private let selectedModelKey = "selected_model"
@@ -129,7 +129,6 @@ struct ChatView: View {
                             }
                         }
                     }
-
                     .onChange(of: ollamaService.currentResponse) { _ in
                         if !ollamaService.currentResponse.isEmpty {
                             withAnimation {
@@ -187,13 +186,14 @@ struct ChatView: View {
                 .padding()
                 .dismissKeyboardOnTap(focusState: $isInputFocused)
             } else {
-
                 MessageInputView(
                     text: $newMessage,
                     isLoading: ollamaService.isLoading,
                     shouldFocus: isNewConversation,
                     onSend: sendMessage,
                     selectedImage: $selectedImage,
+                    selectedPDFText: $selectedPDFText,
+                    selectedTXTText: $selectedTXTText,
                     isInputFocused: $isInputFocused
                 )
             }
@@ -206,7 +206,6 @@ struct ChatView: View {
         .navigationTitle(selectedModel)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-
             ToolbarItem(placement: .principal) {
                 if !availableModels.isEmpty {
                     Menu {
@@ -214,9 +213,7 @@ struct ChatView: View {
                             Button(action: {
                                 let oldModel = selectedModel
                                 selectedModel = model
-
                                 saveSelectedModel(model)
-
                                 if !ollamaService.messages.isEmpty && oldModel != model {
                                     alertMessage = String(format: "l_model_changed".localized, selectedModel)
                                     presentToast(
@@ -254,11 +251,9 @@ struct ChatView: View {
             
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-
                     if !ollamaService.messages.isEmpty {
                         showShareAllSheet = true
                     } else {
-
                         presentToast(
                             ToastValue(
                                 icon: Image(systemName: "info.circle"), 
@@ -273,7 +268,6 @@ struct ChatView: View {
             }
         }
         .onAppear {
-
             isInputFocused = isNewConversation
             
             isModelLoading = true
@@ -284,7 +278,6 @@ struct ChatView: View {
             setupNotificationObservers()
         }
         .onDisappear {
-
             NotificationCenter.default.removeObserver(self)
         }
         .alert("l_delete_message".localized, isPresented: $showDeleteConfirmation) {
@@ -308,7 +301,6 @@ struct ChatView: View {
     private func loadAvailableModels() {
         Task {
             do {
-
                 async let modelsTask = ollamaService.getAvailableModels()
                 async let lastModelTask = ollamaService.getLastUsedModel()
                 
@@ -320,13 +312,10 @@ struct ChatView: View {
                     
                     if !models.isEmpty {
                         if !isNewConversation, let lastModel = lastUsedModel, models.contains(lastModel) {
-
                             selectedModel = lastModel
                             saveSelectedModel(lastModel)
                         } else if models.contains(selectedModel) {
-
                         } else {
-
                             selectedModel = models[0]
                             saveSelectedModel(selectedModel)
                         }
@@ -350,10 +339,59 @@ struct ChatView: View {
     private func sendMessage() {
         let trimmedMessage = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        if !trimmedMessage.isEmpty || selectedImage != nil {
-
+        print("sendMessage called - trimmedMessage: '\(trimmedMessage)'")
+        print("selectedImage: \(selectedImage != nil)")
+        print("selectedPDFText: \(selectedPDFText != nil)")
+        print("selectedTXTText: \(selectedTXTText != nil)")
+        
+        if !trimmedMessage.isEmpty || selectedImage != nil || selectedPDFText != nil || selectedTXTText != nil {
             let imageToSend = selectedImage
+            let pdfTextToSend = selectedPDFText
+            let txtTextToSend = selectedTXTText
             selectedImage = nil
+            selectedPDFText = nil
+            selectedTXTText = nil
+            
+            var finalMessage = trimmedMessage
+            
+            if let pdfText = pdfTextToSend {
+                print("Processing PDF text, length: \(pdfText.count)")
+                if !finalMessage.isEmpty {
+                    finalMessage += "\n\n[PDF 문서 내용]\n" + pdfText
+                } else {
+                    finalMessage = "[PDF 문서 내용]\n" + pdfText
+                }
+                
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
+                presentToast(
+                    ToastValue(
+                        icon: Image(systemName: "doc.text"), message: "PDF 문서가 첨부되었습니다"
+                    )
+                )
+            }
+            
+            if let txtText = txtTextToSend {
+                print("Processing TXT text, length: \(txtText.count)")
+                print("TXT content preview: \(String(txtText.prefix(100)))...")
+                if !finalMessage.isEmpty {
+                    finalMessage += "\n\n[텍스트 파일 내용]\n" + txtText
+                } else {
+                    finalMessage = "[텍스트 파일 내용]\n" + txtText
+                }
+                
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
+                presentToast(
+                    ToastValue(
+                        icon: Image(systemName: "doc.plaintext"), message: "텍스트 파일이 첨부되었습니다"
+                    )
+                )
+            }
+            
+            print("Final message to send: '\(finalMessage)'")
             
             newMessage = ""
             
@@ -370,14 +408,12 @@ struct ChatView: View {
             
             Task {
                 do {
-
                     _ = try await ollamaService.sendMessage(
-                        content: trimmedMessage, 
+                        content: finalMessage, 
                         image: imageToSend, 
                         model: selectedModel
                     )
                 } catch {
-
                     print("Error: \(error.localizedDescription)")
                 }
             }
@@ -385,7 +421,6 @@ struct ChatView: View {
     }
     
     private func deleteMessage(id: UUID) {
-
         guard let index = ollamaService.messages.firstIndex(where: { $0.id == id }) else {
             return
         }
@@ -394,7 +429,6 @@ struct ChatView: View {
             do {
                 try await ollamaService.deleteMessage(at: index)
             } catch {
-
                 print(String(format: "l_cannot_delete_message".localized, error.localizedDescription))
                 alertMessage = String(format: "l_cannot_delete_message".localized, error.localizedDescription)
                 showAlert = true
@@ -410,9 +444,7 @@ struct ChatView: View {
         ) { notification in
             if let urlString = notification.userInfo?["url"] as? String,
                let newURL = URL(string: urlString) {
-
                 Task { @MainActor in
-
                     await self.ollamaService.updateBaseURL(newURL)
                     
                     await self.loadAvailableModels()
@@ -437,7 +469,6 @@ struct ChatView: View {
         
         for (index, message) in ollamaService.messages.enumerated() {
             if message.isUser {
-
                 formattedText += "## \(String(format: "l_question".localized, index/2 + 1))\n"
                 var content = message.content
                 
@@ -449,7 +480,6 @@ struct ChatView: View {
                 
                 formattedText += "\(content)\n\n"
             } else {
-
                 formattedText += "### \("l_answer".localized)\n"
                 formattedText += "\(message.content)\n\n"
                 

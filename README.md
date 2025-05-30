@@ -18,29 +18,49 @@ This app is a **local AI conversation application** designed for users who prior
 ## ✨ Core Features
 
 ### 🤖 AI Conversation Features
-- **Real-time Streaming Responses**: Fast real-time AI responses
+- **Real-time Streaming Responses**: Fast real-time AI responses with streaming support
 - **Multiple Model Support**: All AI models provided by Ollama (Llama, Mistral, Qwen, CodeLlama, etc.)
-- **Multimodal Conversations**: Image attachments and image analysis through vision models
+- **Multimodal Conversations**: Support for image attachments and image analysis through vision models
+- **Document Processing**: PDF and text file upload and analysis capabilities
+- **File Attachment Support**: Support for various file formats including images (JPG, PNG, GIF, etc.), PDF documents, and text files
 - **Response Cancellation**: Ability to stop AI response generation at any time
+- **Auto Image Resizing**: Automatic image compression and resizing for optimal performance
 
 ### 📚 Conversation Management
 - **Persistent Storage**: Automatic saving of all conversation history using SQLite database
-- **Conversation Search**: Keyword-based conversation content search
-- **Conversation Restoration**: Load and continue previous conversations
+- **Conversation Search**: Keyword-based conversation content search functionality
+- **Conversation Restoration**: Load and continue previous conversations seamlessly
 - **Server-based Management**: Separate management of conversations with different Ollama servers
-- **Message Management**: Copy, share, and delete individual messages
+- **Message Management**: Copy, share, and delete individual messages with context menus
+- **Full Conversation Export**: Export entire conversations as text for external use
+- **Conversation Deletion**: Complete conversation removal with confirmation
 
 ### ⚙️ Advanced Settings
-- **AI Parameter Adjustment**: Fine-tuning of Temperature, Top P, Top K, etc.
+- **AI Parameter Adjustment**: Fine-tuning of Temperature (0.1-2.0), Top P (0.1-1.0), Top K (1-100)
 - **Custom Instructions**: System prompt settings for AI behavior customization
-- **Server Connection Management**: Support for multiple Ollama servers and connection status monitoring
+- **Server Connection Management**: Support for multiple Ollama servers and real-time connection status monitoring
+- **Settings Persistence**: All settings automatically saved and restored
 - **Real-time Settings Application**: Immediate application of setting changes without app restart
+- **Connection Testing**: Built-in server connectivity testing functionality
+- **Data Management**: Complete conversation data deletion with confirmation
 
 ### 🌍 User Experience
 - **Multilingual Support**: Complete localization in Korean, English, and Japanese
 - **Dark Mode Support**: Automatic color adaptation based on system theme
-- **Intuitive UI**: Message bubbles, context menus, haptic feedback
+- **Intuitive UI**: Message bubbles, context menus, haptic feedback, and responsive design
 - **Accessibility**: VoiceOver and accessibility feature support
+- **Camera Integration**: Direct camera access for image capture and analysis
+- **Document Picker**: Native iOS document picker integration
+- **Touch Gestures**: Long press for message actions, tap to dismiss keyboard
+- **Loading States**: Visual feedback for all async operations
+
+### 📎 File & Media Support
+- **Image Formats**: JPG, JPEG, PNG, GIF, BMP, TIFF, HEIC, WebP
+- **Document Formats**: PDF (with text extraction), TXT, RTF, Plain Text
+- **Image Processing**: Automatic compression and Base64 encoding
+- **PDF Text Extraction**: Full text extraction from PDF documents
+- **File Preview**: Visual previews for attached files before sending
+- **Multi-format Handling**: Intelligent file type detection and processing
 
 ## 🏗️ Architecture Structure
 
@@ -55,7 +75,9 @@ myollama3/
 │
 ├── 🧩 Components
 │   ├── MessageBubble.swift       # Message bubble UI (markdown rendering)
-│   ├── MessageInputView.swift    # Message input field (image attachment support)
+│   ├── MessageInputView.swift    # Message input field (file attachment support)
+│   ├── DocumentPicker.swift      # Document selection and processing
+│   ├── CameraPicker.swift        # Camera integration component
 │   └── ShareSheet.swift          # Native sharing functionality
 │
 ├── ⚙️ Services
@@ -77,19 +99,23 @@ myollama3/
 ## 🛠️ Technology Stack
 
 ### Frameworks and Libraries
-- **Swift & SwiftUI**: Native iOS development
+- **Swift & SwiftUI**: Native iOS development with declarative UI
 - **Combine**: Reactive programming and state management
-- **SQLite**: Local database (Raw SQL)
-- **URLSession**: Asynchronous network communication (async/await)
-- **MarkdownUI**: Markdown text rendering
-- **Toasts**: User notification display
+- **SQLite**: Local database with raw SQL queries
+- **URLSession**: Asynchronous network communication with async/await
+- **MarkdownUI**: Advanced markdown text rendering
+- **Toasts**: User notification and feedback display
+- **PDFKit**: PDF document processing and text extraction
+- **PhotosUI**: Advanced image selection and processing
+- **UniformTypeIdentifiers**: File type detection and handling
 
 ### Core Technologies
 - **AsyncSequence**: Real-time streaming data processing
-- **PhotosUI**: Image selection and processing
-- **UIKit Integration**: SwiftUI and UIKit integration
+- **UIKit Integration**: Seamless SwiftUI and UIKit integration
 - **UserDefaults**: Persistent app settings storage
-- **NotificationCenter**: In-app event communication
+- **NotificationCenter**: In-app event communication and updates
+- **Task Management**: Modern Swift concurrency for background operations
+- **File System Access**: Secure file access with scoped resources
 
 ## 💾 Database Schema
 
@@ -109,8 +135,8 @@ CREATE TABLE IF NOT EXISTS questions(
 
 ### Data Field Description
 - **groupid**: UUID that groups conversations, representing one conversation session
-- **instruction**: System prompt specifying AI behavior
-- **image**: Base64 encoded string of attached image
+- **instruction**: System prompt specifying AI behavior and personality
+- **image**: Base64 encoded string of attached image or document
 - **engine**: Model name used (llama, mistral, qwen, etc.)
 - **baseurl**: Ollama server address where the conversation took place
 
@@ -121,24 +147,35 @@ CREATE TABLE IF NOT EXISTS questions(
 2. **First App Launch**: Check server setup guide on welcome screen
 3. **Enter Server Address**: Go to Settings → Ollama Server Settings and enter URL (e.g., `http://192.168.0.1:11434`)
 4. **Connection Test**: Test connection with "Check Server Connection Status" button
+5. **Configure AI Parameters**: Adjust Temperature, Top P, Top K values as needed
 
 ### 2. Starting a Conversation
 1. **New Conversation**: Touch "Start New Conversation" button on main screen
-2. **Model Selection**: Select AI model to use from top of screen
+2. **Model Selection**: Select AI model to use from dropdown menu
 3. **Message Input**: Enter questions or instructions in bottom input field
-4. **Image Attachment**: Add images with camera icon (optional)
+4. **File Attachment**: Add images, PDFs, or text files using the paperclip icon
+5. **Send Message**: Use arrow button or Enter key to send
 
 ### 3. Advanced Features
 - **Conversation Search**: Search previous conversations with magnifying glass icon on main screen
 - **Message Management**: Long press messages to show copy, share, delete menu
-- **AI Parameter Adjustment**: Adjust Temperature, Top P, Top K values in settings
+- **AI Parameter Adjustment**: Fine-tune Temperature, Top P, Top K values in settings
 - **Conversation Sharing**: Share entire conversations or individual Q&A as text
+- **Document Analysis**: Upload PDFs for text extraction and analysis
+- **Image Analysis**: Attach images for visual analysis using vision models
+
+### 4. File Management
+- **Image Upload**: Camera or gallery selection with automatic resizing
+- **PDF Processing**: Automatic text extraction from PDF documents
+- **Text Files**: Support for various text file formats
+- **File Preview**: Visual confirmation before sending attachments
+- **File Removal**: Easy attachment removal before sending
 
 ## ⚙️ AI Parameter Settings
 
 ### Temperature (0.1 ~ 2.0)
 - **Low values (0.1-0.5)**: Consistent and predictable responses
-- **Medium values (0.6-0.9)**: Balanced creativity and consistency
+- **Medium values (0.6-0.9)**: Balanced creativity and consistency  
 - **High values (1.0-2.0)**: Creative and diverse responses
 
 ### Top P (0.1 ~ 1.0)
@@ -163,12 +200,15 @@ OLLAMA_HOST=0.0.0.0:11434 ollama serve
 ollama pull llama2
 ollama pull mistral
 ollama pull qwen
+ollama pull llava              # For image analysis
+ollama pull codellama         # For code assistance
 ```
 
 ### Network Configuration
 - **Firewall**: Open port 11434
 - **Router**: Set up port forwarding if needed
 - **IP Address**: Enter correct server IP in app settings
+- **Connection Testing**: Use built-in connection test feature
 
 ## 🌍 Multilingual Support
 
@@ -177,7 +217,7 @@ Currently supported languages:
 - **English** - `en.lproj`  
 - **Japanese** - `ja.lproj`
 
-Language is automatically selected based on device settings, with all UI text fully localized.
+Language is automatically selected based on device settings, with all UI text and system messages fully localized.
 
 ## 🔐 Privacy Protection
 
@@ -186,32 +226,40 @@ MyOllama3 prioritizes user privacy:
 - ✅ **Local Storage**: All conversation content stored only on user device
 - ✅ **No External Transmission**: No data transmission except to configured Ollama server
 - ✅ **Local AI Processing**: All AI processing performed on local Ollama server
+- ✅ **File Security**: Secure file processing with scoped resource access
 - ✅ **Encryption**: SQLite database default security applied
 - ✅ **No Tracking**: No user behavior tracking or analytics data collection
+- ✅ **Data Control**: Complete user control over data deletion
 
 ## 📋 System Requirements
 
 - **iOS**: 16.0 or later
 - **Xcode**: 15.0 or later (for development)
 - **Swift**: 5.9 or later
-- **Network**: Ollama server running on local network
-- **Storage**: Minimum 50MB (additional space based on conversation history)
+- **Network**: Ollama server running on local network or remote server
+- **Storage**: Minimum 100MB (additional space based on conversation history and attachments)
+- **Memory**: Adequate RAM for image processing and PDF text extraction
 
 ## 🚀 Supported Models
 
 Supports all models provided by Ollama:
 
 ### Conversational Models
-- **Llama 2/3**: General conversation models
-- **Mistral**: High-performance conversation model
-- **Qwen**: Multilingual support model
-- **Gemma**: Google's lightweight model
+- **Llama 2/3**: General conversation models with excellent performance
+- **Mistral**: High-performance conversation model with multilingual support
+- **Qwen**: Advanced multilingual support model with strong reasoning
+- **Gemma**: Google's lightweight and efficient model
 
 ### Specialized Models
-- **CodeLlama**: Programming-specific
-- **DeepSeek-Coder**: Coding specialist
-- **LLaVA**: Image recognition model
-- **Bakllava**: Vision-language model
+- **CodeLlama**: Programming and development assistance
+- **DeepSeek-Coder**: Advanced coding specialist with multiple languages
+- **LLaVA**: Image recognition and visual analysis model
+- **Bakllava**: Advanced vision-language model for complex visual tasks
+
+### Multimodal Models
+- **LLaVA variants**: Image understanding and description
+- **Bakllava**: Enhanced image and document analysis
+- **Vision models**: Support for various vision-enabled models
 
 ## 🛠️ Development and Build
 
@@ -232,14 +280,18 @@ open myollama3.xcodeproj
 - Xcode automatically resolves package dependencies
 
 ### Dependency Libraries
-- **MarkdownUI**: Markdown rendering
-- **Toasts**: User notification display
+- **MarkdownUI**: Advanced markdown rendering with syntax highlighting
+- **Toasts**: User notification and feedback display
+- **PDFKit**: Built-in PDF processing capabilities
+- **PhotosUI**: Native iOS photo selection interface
 
 ## 🐛 Known Issues
 
 - Some SwiftUI features limited on iOS 16.0 and below
-- Very large images may increase memory usage
+- Very large images may increase memory usage temporarily
 - Streaming may be interrupted during network instability
+- PDF text extraction may vary based on PDF structure
+- Camera access requires explicit user permission
 
 ## 🤝 Contributing
 
@@ -261,10 +313,11 @@ For license information of this project, please refer to [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [Ollama](https://ollama.ai/) - Providing local LLM server
-- [MarkdownUI](https://github.com/gonzalezreal/MarkdownUI) - Markdown rendering
-- [Swift-Toasts](https://github.com/EnesKaraosman/Toast-SwiftUI) - Notification display
+- [Ollama](https://ollama.ai/) - Providing excellent local LLM server platform
+- [MarkdownUI](https://github.com/gonzalezreal/MarkdownUI) - Beautiful markdown rendering
+- [Swift-Toasts](https://github.com/EnesKaraosman/Toast-SwiftUI) - User notification display
+- [PDFKit](https://developer.apple.com/documentation/pdfkit) - Apple's PDF processing framework
 
 ---
 
-**Experience safe and private AI conversations with MyOllama3! 🚀**
+**Experience safe and private AI conversations with advanced file support using MyOllama3! 🚀**

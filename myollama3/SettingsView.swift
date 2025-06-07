@@ -9,24 +9,44 @@ import SwiftUI
 
 class SettingsManager: ObservableObject {
     @Published var baseURL: String
+    @Published var lmStudioURL: String
+    @Published var claudeAPIKey: String
+    @Published var openAIAPIKey: String
     @Published var instruction: String
     @Published var temperature: Double
     @Published var topP: Double
     @Published var topK: Int
-    
+    @Published var isOllamaEnabled: Bool
+    @Published var isLMStudioEnabled: Bool
+    @Published var isClaudeEnabled: Bool
+    @Published var isOpenAIEnabled: Bool
     
     private let baseURLKey = "ollama_base_url"
+    private let lmStudioURLKey = "lmstudio_base_url"
+    private let claudeAPIKeyKey = "claude_api_key"
+    private let openAIAPIKeyKey = "openai_api_key"
     private let instructionKey = "ollama_instruction"
     private let temperatureKey = "ollama_temperature"
     private let topPKey = "ollama_top_p"
     private let topKKey = "ollama_top_k"
+    private let isOllamaEnabledKey = "is_ollama_enabled"
+    private let isLMStudioEnabledKey = "is_lmstudio_enabled"
+    private let isClaudeEnabledKey = "is_claude_enabled"
+    private let isOpenAIEnabledKey = "is_openai_enabled"
     
     init() {
         self.baseURL = UserDefaults.standard.string(forKey: baseURLKey) ?? "http://192.168.0.1:11434"
+        self.lmStudioURL = UserDefaults.standard.string(forKey: lmStudioURLKey) ?? "http://192.168.0.6:1234"
+        self.claudeAPIKey = UserDefaults.standard.string(forKey: claudeAPIKeyKey) ?? ""
+        self.openAIAPIKey = UserDefaults.standard.string(forKey: openAIAPIKeyKey) ?? ""
         self.instruction = UserDefaults.standard.string(forKey: instructionKey) ?? "l_default_instruction".localized
         self.temperature = UserDefaults.standard.double(forKey: temperatureKey)
         self.topP = UserDefaults.standard.double(forKey: topPKey)
         self.topK = UserDefaults.standard.integer(forKey: topKKey)
+        self.isOllamaEnabled = UserDefaults.standard.bool(forKey: isOllamaEnabledKey)
+        self.isLMStudioEnabled = UserDefaults.standard.bool(forKey: isLMStudioEnabledKey)
+        self.isClaudeEnabled = UserDefaults.standard.bool(forKey: isClaudeEnabledKey)
+        self.isOpenAIEnabled = UserDefaults.standard.bool(forKey: isOpenAIEnabledKey)
         
         if self.temperature == 0 {
             self.temperature = 0.7
@@ -39,14 +59,26 @@ class SettingsManager: ObservableObject {
         if self.topK == 0 {
             self.topK = 40
         }
+        
+        if !UserDefaults.standard.bool(forKey: "default_settings_initialized") {
+            self.isOllamaEnabled = true
+            UserDefaults.standard.set(true, forKey: "default_settings_initialized")
+        }
     }
     
     func saveSettings() {
         UserDefaults.standard.set(baseURL, forKey: baseURLKey)
+        UserDefaults.standard.set(lmStudioURL, forKey: lmStudioURLKey)
+        UserDefaults.standard.set(claudeAPIKey, forKey: claudeAPIKeyKey)
+        UserDefaults.standard.set(openAIAPIKey, forKey: openAIAPIKeyKey)
         UserDefaults.standard.set(instruction, forKey: instructionKey)
         UserDefaults.standard.set(temperature, forKey: temperatureKey)
         UserDefaults.standard.set(topP, forKey: topPKey)
         UserDefaults.standard.set(topK, forKey: topKKey)
+        UserDefaults.standard.set(isOllamaEnabled, forKey: isOllamaEnabledKey)
+        UserDefaults.standard.set(isLMStudioEnabled, forKey: isLMStudioEnabledKey)
+        UserDefaults.standard.set(isClaudeEnabled, forKey: isClaudeEnabledKey)
+        UserDefaults.standard.set(isOpenAIEnabled, forKey: isOpenAIEnabledKey)
     }
 }
 
@@ -57,7 +89,9 @@ struct SettingsView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isCheckingConnection = false
+    @State private var isCheckingLMStudioConnection = false
     @State private var connectionStatus: ConnectionStatus = .unknown
+    @State private var lmStudioConnectionStatus: ConnectionStatus = .unknown
     @State private var isSaving = false
     @State private var showConfirmationAlert = false
     @State private var showDeleteConfirmation = false
@@ -112,30 +146,93 @@ struct SettingsView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("l_ollama_server_settings".localized)) {
-                TextField("Base URL", text: $settings.baseURL)
-                    .autocorrectionDisabled()
-                    .autocapitalization(.none)
-                    .keyboardType(.URL)
-                
-                Button(action: checkServerConnection) {
-                    HStack {
-                        Text("l_check_server_connection".localized)
-                            .foregroundColor(AppColor.link)
-                        Spacer()
-                        if isCheckingConnection {
-                            ProgressView()
-                                .controlSize(.small)
+            Section(header: Text("LLM Servers")) {
+                // Ollama Server
+                Toggle(isOn: $settings.isOllamaEnabled) {
+                    Text("Ollama Server")
+                }
+                if settings.isOllamaEnabled {
+                    TextField("Base URL", text: $settings.baseURL)
+                        .autocorrectionDisabled()
+                        .autocapitalization(.none)
+                        .keyboardType(.URL)
+                    
+                    Button(action: checkServerConnection) {
+                        HStack {
+                            Text("l_check_server_connection".localized)
+                                .foregroundColor(AppColor.link)
+                            Spacer()
+                            if isCheckingConnection {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
                         }
                     }
+                    .disabled(isCheckingConnection)
+                    
+                    if connectionStatus != .unknown {
+                        Text(connectionStatus.message)
+                            .font(.footnote)
+                            .foregroundColor(connectionStatus.color)
+                            .padding(.top, 4)
+                    }
                 }
-                .disabled(isCheckingConnection)
-                
-                if connectionStatus != .unknown {
-                    Text(connectionStatus.message)
-                        .font(.footnote)
-                        .foregroundColor(connectionStatus.color)
-                        .padding(.top, 4)
+
+                // LMStudio Server
+                Toggle(isOn: $settings.isLMStudioEnabled) {
+                    Text("LMStudio")
+                }
+                if settings.isLMStudioEnabled {
+                    TextField("Base URL", text: $settings.lmStudioURL)
+                        .autocorrectionDisabled()
+                        .autocapitalization(.none)
+                        .keyboardType(.URL)
+                        
+                    Button(action: checkLMStudioConnection) {
+                        HStack {
+                            Text("l_check_server_connection".localized)
+                                .foregroundColor(AppColor.link)
+                            Spacer()
+                            if isCheckingLMStudioConnection {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
+                    .disabled(isCheckingLMStudioConnection)
+                    
+                    if lmStudioConnectionStatus != .unknown {
+                        Text(lmStudioConnectionStatus.message)
+                            .font(.footnote)
+                            .foregroundColor(lmStudioConnectionStatus.color)
+                            .padding(.top, 4)
+                    }
+                }
+            }
+
+            // Claude API Section
+            Section(header: Text("Claude API")) {
+                Toggle(isOn: $settings.isClaudeEnabled) {
+                    Text("Enable Claude")
+                }
+                if settings.isClaudeEnabled {
+                    SecureField("API Key", text: $settings.claudeAPIKey)
+                        .autocorrectionDisabled()
+                        .autocapitalization(.none)
+                        .textContentType(.password)
+                }
+            }
+
+            // OpenAI API Section
+            Section(header: Text("OpenAI API")) {
+                Toggle(isOn: $settings.isOpenAIEnabled) {
+                    Text("Enable OpenAI")
+                }
+                if settings.isOpenAIEnabled {
+                    SecureField("API Key", text: $settings.openAIAPIKey)
+                        .autocorrectionDisabled()
+                        .autocapitalization(.none)
+                        .textContentType(.password)
                 }
             }
             
@@ -178,10 +275,17 @@ struct SettingsView: View {
             Section (header: Text("l_reset".localized), footer: Text("l_reset_llm_desc".localized)) {
                 Button("l_reset_llm_settings".localized) {
                     settings.baseURL = "http://192.168.0.1:11434"
+                    settings.lmStudioURL = "http://192.168.0.6:1234"
+                    settings.claudeAPIKey = ""
+                    settings.openAIAPIKey = ""
                     settings.instruction = "l_default_instruction".localized
                     settings.temperature = 0.7
                     settings.topP = 0.9
                     settings.topK = 40
+                    settings.isOllamaEnabled = true
+                    settings.isLMStudioEnabled = false
+                    settings.isClaudeEnabled = false
+                    settings.isOpenAIEnabled = false
                 }
                 .foregroundColor(AppColor.link)
             }
@@ -388,6 +492,34 @@ struct SettingsView: View {
                 await MainActor.run {
                     isCheckingConnection = false
                     connectionStatus = .failed(error.localizedDescription)
+                }
+            }
+        }
+    }
+    
+    private func checkLMStudioConnection() {
+        guard let url = URL(string: settings.lmStudioURL) else {
+            lmStudioConnectionStatus = .failed("l_connection_error".localized)
+            return
+        }
+        
+        isCheckingLMStudioConnection = true
+        lmStudioConnectionStatus = .unknown
+        
+        Task {
+            do {
+                let service = OllamaService(baseURL: url)
+                
+                let models = try await service.getAvailableModels()
+                
+                await MainActor.run {
+                    isCheckingLMStudioConnection = false
+                    lmStudioConnectionStatus = .success
+                }
+            } catch {
+                await MainActor.run {
+                    isCheckingLMStudioConnection = false
+                    lmStudioConnectionStatus = .failed(error.localizedDescription)
                 }
             }
         }

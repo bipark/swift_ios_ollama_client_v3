@@ -10,6 +10,7 @@ import MarkdownUI
 import RegexBuilder
 import Toasts
 import PhotosUI
+import Combine
 
 
 typealias Message = OllamaService.Message
@@ -36,140 +37,56 @@ struct ChatView: View {
     @State private var showShareAllSheet = false
     @StateObject private var settings = SettingsManager()
     @State private var selectedLLM: LLMTarget = .ollama
+    private var llmBridge: LLMBridge
+    @State private var keyboardHeight: CGFloat = 0
     
     private let selectedModelKey = "selected_model"
     private let defaultModel = "llama"
     
     init(conversationId: String? = nil, baseUrl: URL? = nil) {
-        let service = OllamaService(
-            baseURL: baseUrl,
-            conversationId: conversationId
-        )
-        _ollamaService = StateObject(wrappedValue: service)
+        let defaultURLString = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
+        let url = baseUrl ?? URL(string: defaultURLString)!
+        
+        let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
+        let port = url.port ?? 11434
+        
+        _ollamaService = StateObject(wrappedValue: OllamaService(baseURL: url, conversationId: conversationId))
+        self.llmBridge = LLMBridge(baseURL: baseURLString, port: port)
         
         _isNewConversation = State(initialValue: conversationId == nil)
         
-        let savedModel = UserDefaults.standard.string(forKey: "selected_model") ?? "llama"
-        _selectedModel = State(initialValue: savedModel)
+        if let modelName = UserDefaults.standard.string(forKey: selectedModelKey) {
+            _selectedModel = State(initialValue: modelName)
+        } else {
+            _selectedModel = State(initialValue: defaultModel)
+        }
     }
     
     var body: some View {
-        VStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(ollamaService.messages) { message in
-                            MessageBubble(
-                                message: message,
-                                allMessages: ollamaService.messages,
-                                onDelete: {
-                                    messageToDelete = message.id
-                                    showDeleteConfirmation = true
-                                }
-                            )
-                            .dismissKeyboardOnTap(focusState: $isInputFocused)
-                        }
-                        
-                        if !ollamaService.currentResponse.isEmpty {
-                            HStack {
-                                Markdown(ollamaService.currentResponse)
-                                    .padding(12)
-                                    .background(Color(.systemGray5))
-                                    .foregroundColor(.primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                
-                                Spacer()
-                            }
-                            .id("currentResponse")
-                            .transition(.opacity)
-                            .dismissKeyboardOnTap(focusState: $isInputFocused)
-                        }
-                        
-                        if ollamaService.isLoading && ollamaService.currentResponse.isEmpty {
-                            HStack {
-                                Text("l_thinking".localized)
-                                    .padding(12)
-                                    .background(Color(.systemGray5))
-                                    .foregroundColor(.primary)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                
-                                Spacer()
-                                
-                                Button {
-                                    ollamaService.cancelGeneration()
-                                } label: {
-                                    Text("l_cancel_generation".localized)
-                                        .padding(8)
-                                        .background(Color.red.opacity(0.1))
-                                        .foregroundColor(Color.red)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                }
-                            }
-                            .padding(.vertical, 4)
-                            .dismissKeyboardOnTap(focusState: $isInputFocused)
-                        }
-                        
-                        if let error = ollamaService.errorMessage {
-                            HStack {
-                                Text(String(format: "l_error_prefix".localized, error))
-                                    .padding(12)
-                                    .background(Color.red.opacity(0.1))
-                                    .foregroundColor(.red)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                
-                                Spacer()
-                            }
-                            .padding(.vertical, 4)
-                            .dismissKeyboardOnTap(focusState: $isInputFocused)
-                        }
-                    }
-                    .padding()
-                    .onChange(of: ollamaService.messages.count) { _ in
-                        if let lastMessage = ollamaService.messages.last {
-                            withAnimation {
-                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                            }
-                        }
-                    }
-                    .onChange(of: ollamaService.currentResponse) { _ in
-                        if !ollamaService.currentResponse.isEmpty {
-                            withAnimation {
-                                proxy.scrollTo("currentResponse", anchor: .bottom)
-                            }
-                        }
-                    }
-                }
-                .contentShape(Rectangle())
-                .simultaneousGesture(TapGesture().onEnded {
-                    hideKeyboard()
-                    isInputFocused = false
-                })
-            }
-            
-            Divider()
-            
-            if isModelLoading {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 8) {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                if isModelLoading {
+                    HStack {
                         ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(0.8)
                         Text("l_loading_models".localized)
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
-                    Spacer()
-                }
-                .padding()
-                .dismissKeyboardOnTap(focusState: $isInputFocused)
-            } else if isModelLoadingFailed {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 8) {
+                    .padding()
+                    .dismissKeyboardOnTap(focusState: $isInputFocused)
+                } else if isModelLoadingFailed {
+                    VStack {
                         Image(systemName: "exclamationmark.triangle")
-                            .font(.title)
+                            .font(.largeTitle)
                             .foregroundColor(.orange)
-                        Text("l_model_load_failed".localized)
+                            .padding(.bottom, 4)
+                        
+                        Text("l_models_load_failed".localized)
                             .font(.headline)
+                            .multilineTextAlignment(.center)
+                        
                         Text("l_check_server_and_retry".localized)
                             .font(.caption)
                             .foregroundColor(.gray)
@@ -182,31 +99,147 @@ struct ChatView: View {
                         }
                         .padding(.top, 8)
                         .buttonStyle(.bordered)
+                        Spacer()
                     }
-                    Spacer()
+                    .padding()
+                    .dismissKeyboardOnTap(focusState: $isInputFocused)
+                } else {
+                    // Messages list
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 12) {
+                                ForEach(ollamaService.messages) { message in
+                                    MessageBubble(
+                                        message: message,
+                                        allMessages: ollamaService.messages,
+                                        onDelete: {
+                                            messageToDelete = message.id
+                                            showDeleteConfirmation = true
+                                        }
+                                    )
+                                    .dismissKeyboardOnTap(focusState: $isInputFocused)
+                                }
+                                
+                                if !ollamaService.currentResponse.isEmpty {
+                                    HStack {
+                                        Markdown(ollamaService.currentResponse)
+                                            .padding(12)
+                                            .background(Color(.systemGray5))
+                                            .foregroundColor(.primary)
+                                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                                        
+                                        Spacer()
+                                    }
+                                    .id("currentResponse")
+                                    .transition(.opacity)
+                                    .dismissKeyboardOnTap(focusState: $isInputFocused)
+                                }
+                                
+                                if ollamaService.isLoading && ollamaService.currentResponse.isEmpty {
+                                    HStack {
+                                        Text("l_thinking".localized)
+                                            .padding(12)
+                                            .background(Color(.systemGray5))
+                                            .foregroundColor(.primary)
+                                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            ollamaService.cancelGeneration()
+                                        } label: {
+                                            Text("l_cancel_generation".localized)
+                                                .padding(8)
+                                                .background(Color.red.opacity(0.1))
+                                                .foregroundColor(Color.red)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                    .dismissKeyboardOnTap(focusState: $isInputFocused)
+                                }
+                                
+                                if let error = ollamaService.errorMessage {
+                                    HStack {
+                                        Text(String(format: "l_error_prefix".localized, error))
+                                            .padding(12)
+                                            .background(Color.red.opacity(0.1))
+                                            .foregroundColor(.red)
+                                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                                        
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 4)
+                                    .dismissKeyboardOnTap(focusState: $isInputFocused)
+                                }
+                            }
+                            .padding()
+                            .padding(.bottom, calculateInputViewHeight() + keyboardHeight + 20)
+                            .onChange(of: ollamaService.messages.count) { _ in
+                                if let lastMessage = ollamaService.messages.last {
+                                    withAnimation {
+                                        proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                                    }
+                                }
+                            }
+                            .onChange(of: ollamaService.currentResponse) { _ in
+                                if !ollamaService.currentResponse.isEmpty {
+                                    withAnimation {
+                                        proxy.scrollTo("currentResponse", anchor: .bottom)
+                                    }
+                                }
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(TapGesture().onEnded {
+                            hideKeyboard()
+                            isInputFocused = false
+                        })
+                    }
                 }
-                .padding()
-                .dismissKeyboardOnTap(focusState: $isInputFocused)
-            } else {
-                MessageInputView(
-                    text: $newMessage,
-                    isLoading: ollamaService.isLoading,
-                    shouldFocus: isNewConversation,
-                    onSend: sendMessage,
-                    selectedImage: $selectedImage,
-                    selectedPDFText: $selectedPDFText,
-                    selectedTXTText: $selectedTXTText,
-                    isInputFocused: $isInputFocused,
-                    selectedLLM: $selectedLLM,
-                    enabledLLMs: settings.getEnabledLLMs()
-                )
+                
+                Spacer()
             }
+            .overlay(
+                VStack {
+                    Spacer()
+                    
+                    VStack(spacing: 0) {
+                        if !isModelLoading && !isModelLoadingFailed {
+                            Divider()
+                            
+                            MessageInputView(
+                                text: $newMessage,
+                                isLoading: ollamaService.isLoading,
+                                shouldFocus: isNewConversation,
+                                onSend: sendMessage,
+                                selectedImage: $selectedImage,
+                                selectedPDFText: $selectedPDFText,
+                                selectedTXTText: $selectedTXTText,
+                                isInputFocused: $isInputFocused,
+                                selectedLLM: $selectedLLM,
+                                selectedModel: $selectedModel,
+                                enabledLLMs: settings.getEnabledLLMs(),
+                                llmBridge: llmBridge
+                            )
+                            .frame(maxHeight: calculateInputViewHeight())
+                            .background(Color(.systemBackground))
+                        }
+                    }
+                    .padding(.bottom, keyboardHeight > 0 ? keyboardHeight : getSafeAreaInsets().bottom)
+                },
+                alignment: .bottom
+            )
         }
         .contentShape(Rectangle())
         .simultaneousGesture(TapGesture().onEnded {
             hideKeyboard()
             isInputFocused = false
         })
+        .animation(.easeInOut(duration: 0.3), value: keyboardHeight)
+        .onReceive(Publishers.keyboardHeight) { height in
+            keyboardHeight = height
+        }
         .navigationTitle(selectedModel)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -433,11 +466,16 @@ struct ChatView: View {
             do {
                 try await ollamaService.deleteMessage(at: index)
             } catch {
-                print(String(format: "l_cannot_delete_message".localized, error.localizedDescription))
-                alertMessage = String(format: "l_cannot_delete_message".localized, error.localizedDescription)
-                showAlert = true
+                await MainActor.run {
+                    alertMessage = String(format: "l_cannot_delete_message".localized, error.localizedDescription)
+                    showAlert = true
+                }
             }
         }
+    }
+    
+    private func saveSelectedModel(_ model: String) {
+        UserDefaults.standard.set(model, forKey: selectedModelKey)
     }
     
     private func setupNotificationObservers() {
@@ -447,21 +485,14 @@ struct ChatView: View {
             queue: .main
         ) { notification in
             if let urlString = notification.userInfo?["url"] as? String,
-               let newURL = URL(string: urlString) {
-                Task { @MainActor in
-                    await self.ollamaService.updateBaseURL(newURL)
-                    
-                    await self.loadAvailableModels()
-                    
-                    self.alertMessage = String(format: "l_server".localized, urlString)
-                    self.showAlert = true
-                }
+               let url = URL(string: urlString) {
+                ollamaService.updateBaseURL(url)
+                
+                isModelLoading = true
+                isModelLoadingFailed = false
+                loadAvailableModels()
             }
         }
-    }
-    
-    private func saveSelectedModel(_ model: String) {
-        UserDefaults.standard.set(model, forKey: selectedModelKey)
     }
     
     private func formatAllMessages() -> String {
@@ -503,5 +534,57 @@ struct ChatView: View {
         formattedText += "\(String(format: "l_server".localized, ollamaService.getBaseURL().absoluteString))"
         
         return formattedText
+    }
+    
+    private func calculateInputViewHeight() -> CGFloat {
+        var height: CGFloat = 60  // 기본 높이 (메뉴 + 입력창)
+        
+        // 이미지가 있으면 높이 추가
+        if selectedImage != nil {
+            height += 70  // 이미지 미리보기 높이 (60 + 패딩)
+        }
+        
+        // PDF 파일이 있으면 높이 추가
+        if selectedPDFText != nil {
+            height += 45  // PDF 미리보기 높이
+        }
+        
+        // 텍스트 파일이 있으면 높이 추가
+        if selectedTXTText != nil {
+            height += 45  // 텍스트 미리보기 높이
+        }
+        
+        // 텍스트 길이에 따른 추가 높이 (여러 줄일 때)
+        let textLines = newMessage.components(separatedBy: .newlines).count
+        if textLines > 1 {
+            height += CGFloat((textLines - 1) * 16)  // 줄당 16픽셀 추가
+        }
+        
+        // 최대 높이 제한
+        return min(height, 250)
+    }
+    
+    private func getSafeAreaInsets() -> UIEdgeInsets {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            return UIEdgeInsets()
+        }
+        return window.safeAreaInsets
+    }
+}
+
+// MARK: - Keyboard Height Publisher
+extension Publishers {
+    static var keyboardHeight: AnyPublisher<CGFloat, Never> {
+        let willShow = NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+            .map { notification -> CGFloat in
+                (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect)?.height ?? 0
+            }
+        
+        let willHide = NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+            .map { _ -> CGFloat in 0 }
+        
+        return MergeMany(willShow, willHide)
+            .eraseToAnyPublisher()
     }
 }

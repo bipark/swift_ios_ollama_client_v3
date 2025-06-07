@@ -35,7 +35,7 @@ class SettingsManager: ObservableObject {
     private let isOpenAIEnabledKey = "is_openai_enabled"
     
     init() {
-        self.baseURL = UserDefaults.standard.string(forKey: baseURLKey) ?? "http://192.168.0.1:11434"
+        self.baseURL = UserDefaults.standard.string(forKey: baseURLKey) ?? "http://192.168.0.6:11434"
         self.lmStudioURL = UserDefaults.standard.string(forKey: lmStudioURLKey) ?? "http://192.168.0.6:1234"
         self.claudeAPIKey = UserDefaults.standard.string(forKey: claudeAPIKeyKey) ?? ""
         self.openAIAPIKey = UserDefaults.standard.string(forKey: openAIAPIKeyKey) ?? ""

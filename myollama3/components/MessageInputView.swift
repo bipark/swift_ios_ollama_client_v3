@@ -20,6 +20,8 @@ struct MessageInputView: View {
     @Binding var selectedPDFText: String?
     @Binding var selectedTXTText: String?
     var isInputFocused: FocusState<Bool>.Binding
+    @Binding var selectedLLM: LLMTarget
+    var enabledLLMs: [(name: String, type: LLMTarget)]
     
     @State private var showImagePicker: Bool = false
     @State private var showImagePreview: Bool = false
@@ -27,6 +29,7 @@ struct MessageInputView: View {
     @State private var showCamera: Bool = false
     @State private var showDocumentPicker: Bool = false
     @State private var textHeight: CGFloat = 40
+    @State private var showLLMMenu: Bool = false
     
     private func calculateTextHeight() -> CGFloat {
         let minHeight: CGFloat = 40
@@ -149,39 +152,65 @@ struct MessageInputView: View {
                 .padding(.horizontal)
             }
             
-            HStack(alignment: .bottom, spacing: 8) {
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color(.systemGray6))
-                        .frame(height: textHeight)
-                    
-                    VStack(spacing: 0) {
-                        TextEditor(text: $text)
-                            .font(.system(size: 16))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.clear)
-                            .focused($isFocused)
-                            .scrollContentBackground(.hidden)
-                            .frame(height: textHeight)
-                            .onChange(of: text) { _ in
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    textHeight = calculateTextHeight()
+            VStack {
+                Menu {
+                    ForEach(enabledLLMs, id: \.type) { llm in
+                        Button(action: {
+                            selectedLLM = llm.type
+                        }) {
+                            HStack {
+                                Text(llm.name)
+                                if selectedLLM == llm.type {
+                                    Image(systemName: "checkmark")
                                 }
                             }
+                        }
                     }
-                    
-                    if text.isEmpty {
-                        Text("l_message_input_placeholder".localized)
-                            .font(.system(size: 16))
-                            .foregroundColor(Color(.placeholderText))
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 16)
-                            .allowsHitTesting(false)
+                } label: {
+                    HStack {
+                        Text(enabledLLMs.first(where: { $0.type == selectedLLM })?.name ?? "Select LLM")
+                            .font(.system(size: 14))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12))
                     }
+                    .foregroundColor(Color.appIcon)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
                 }
                 
-                VStack(spacing: 8) {
+                HStack {
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(.systemGray6))
+                            .frame(height: textHeight)
+                        
+                        VStack(spacing: 0) {
+                            TextEditor(text: $text)
+                                .font(.system(size: 16))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.clear)
+                                .focused($isFocused)
+                                .scrollContentBackground(.hidden)
+                                .frame(height: textHeight)
+                                .onChange(of: text) { _ in
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        textHeight = calculateTextHeight()
+                                    }
+                                }
+                        }
+                        
+                        if text.isEmpty {
+                            Text("l_message_input_placeholder".localized)
+                                .font(.system(size: 16))
+                                .foregroundColor(Color(.placeholderText))
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                                .allowsHitTesting(false)
+                        }
+                    }
                     Button(action: {
                         showAttachmentMenu = true
                     }) {
@@ -189,7 +218,6 @@ struct MessageInputView: View {
                             .font(.system(size: 20))
                             .foregroundColor(Color.appIcon)
                     }
-                    
                     Button(action: onSend) {
                         if isLoading {
                             ProgressView()
@@ -204,17 +232,17 @@ struct MessageInputView: View {
                     .frame(width: 32, height: 32)
                     .background(
                         Circle().fill(
-                            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading 
-                            ? Color.gray 
+                            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading
+                            ? Color.gray
                             : Color.appPrimary
                         )
                     )
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading)
                 }
-                .padding(.bottom, 4)
             }
-            .padding(.horizontal)
+            
         }
+        .padding(.horizontal)
         .padding(.vertical, 8)
         .onAppear {
             textHeight = calculateTextHeight()

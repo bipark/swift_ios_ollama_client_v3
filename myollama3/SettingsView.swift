@@ -80,6 +80,25 @@ class SettingsManager: ObservableObject {
         UserDefaults.standard.set(isClaudeEnabled, forKey: isClaudeEnabledKey)
         UserDefaults.standard.set(isOpenAIEnabled, forKey: isOpenAIEnabledKey)
     }
+    
+    func getEnabledLLMs() -> [(name: String, type: LLMTarget)] {
+        var enabledLLMs: [(name: String, type: LLMTarget)] = []
+        
+        if isOllamaEnabled {
+            enabledLLMs.append(("Ollama", .ollama))
+        }
+        if isLMStudioEnabled {
+            enabledLLMs.append(("LMStudio", .lmstudio))
+        }
+        if isClaudeEnabled {
+            enabledLLMs.append(("Claude", .claude))
+        }
+        if isOpenAIEnabled {
+            enabledLLMs.append(("OpenAI", .openai))
+        }
+        
+        return enabledLLMs
+    }
 }
 
 struct SettingsView: View {
@@ -182,31 +201,29 @@ struct SettingsView: View {
                 Toggle(isOn: $settings.isLMStudioEnabled) {
                     Text("LMStudio")
                 }
-                if settings.isLMStudioEnabled {
-                    TextField("Base URL", text: $settings.lmStudioURL)
-                        .autocorrectionDisabled()
-                        .autocapitalization(.none)
-                        .keyboardType(.URL)
-                        
-                    Button(action: checkLMStudioConnection) {
-                        HStack {
-                            Text("l_check_server_connection".localized)
-                                .foregroundColor(AppColor.link)
-                            Spacer()
-                            if isCheckingLMStudioConnection {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
+                TextField("Base URL", text: $settings.lmStudioURL)
+                    .autocorrectionDisabled()
+                    .autocapitalization(.none)
+                    .keyboardType(.URL)
+                    
+                Button(action: checkLMStudioConnection) {
+                    HStack {
+                        Text("l_check_server_connection".localized)
+                            .foregroundColor(AppColor.link)
+                        Spacer()
+                        if isCheckingLMStudioConnection {
+                            ProgressView()
+                                .controlSize(.small)
                         }
                     }
-                    .disabled(isCheckingLMStudioConnection)
-                    
-                    if lmStudioConnectionStatus != .unknown {
-                        Text(lmStudioConnectionStatus.message)
-                            .font(.footnote)
-                            .foregroundColor(lmStudioConnectionStatus.color)
-                            .padding(.top, 4)
-                    }
+                }
+                .disabled(isCheckingLMStudioConnection)
+                
+                if lmStudioConnectionStatus != .unknown {
+                    Text(lmStudioConnectionStatus.message)
+                        .font(.footnote)
+                        .foregroundColor(lmStudioConnectionStatus.color)
+                        .padding(.top, 4)
                 }
             }
 
@@ -215,12 +232,10 @@ struct SettingsView: View {
                 Toggle(isOn: $settings.isClaudeEnabled) {
                     Text("Enable Claude")
                 }
-                if settings.isClaudeEnabled {
-                    SecureField("API Key", text: $settings.claudeAPIKey)
-                        .autocorrectionDisabled()
-                        .autocapitalization(.none)
-                        .textContentType(.password)
-                }
+                TextField("API Key", text: $settings.claudeAPIKey)
+                    .autocorrectionDisabled()
+                    .autocapitalization(.none)
+
             }
 
             // OpenAI API Section
@@ -228,12 +243,9 @@ struct SettingsView: View {
                 Toggle(isOn: $settings.isOpenAIEnabled) {
                     Text("Enable OpenAI")
                 }
-                if settings.isOpenAIEnabled {
-                    SecureField("API Key", text: $settings.openAIAPIKey)
-                        .autocorrectionDisabled()
-                        .autocapitalization(.none)
-                        .textContentType(.password)
-                }
+                TextField("API Key", text: $settings.openAIAPIKey)
+                    .autocorrectionDisabled()
+                    .autocapitalization(.none)
             }
             
             Section(header: Text("l_llm_instructions".localized), footer: Text("l_llm_instructions_desc".localized)) {

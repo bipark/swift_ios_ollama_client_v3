@@ -34,6 +34,8 @@ struct ChatView: View {
     @State private var selectedPDFText: String? = nil
     @State private var selectedTXTText: String? = nil
     @State private var showShareAllSheet = false
+    @StateObject private var settings = SettingsManager()
+    @State private var selectedLLM: LLMTarget = .ollama
     
     private let selectedModelKey = "selected_model"
     private let defaultModel = "llama"
@@ -194,7 +196,9 @@ struct ChatView: View {
                     selectedImage: $selectedImage,
                     selectedPDFText: $selectedPDFText,
                     selectedTXTText: $selectedTXTText,
-                    isInputFocused: $isInputFocused
+                    isInputFocused: $isInputFocused,
+                    selectedLLM: $selectedLLM,
+                    enabledLLMs: settings.getEnabledLLMs()
                 )
             }
         }

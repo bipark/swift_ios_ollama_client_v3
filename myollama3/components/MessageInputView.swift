@@ -53,111 +53,7 @@ struct MessageInputView: View {
         let calculatedHeight = textSize.height + 16
         return min(max(calculatedHeight, minHeight), maxHeight)
     }
-    
-    private var actionButtons: some View {
-        VStack {
-            Button(action: {
-                showAttachmentMenu = true
-            }) {
-                Image(systemName: "paperclip")
-                    .font(.system(size: 20))
-                    .foregroundColor(Color.appIcon)
-            }
-            Button(action: onSend) {
-                if isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.8)
-                } else {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-            }
-            .frame(width: 32, height: 32)
-            .background(
-                Circle().fill(
-                    text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading
-                    ? Color.gray
-                    : Color.appPrimary
-                )
-            )
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading)
-        }
-    }
-    
-    private var inputControls: some View {
-        VStack(spacing: 4) {
-            HStack {
-                Menu {
-                    ForEach(enabledLLMs, id: \.type) { llm in
-                        Button(action: {
-                            selectedLLM = llm.type
-                            loadModels()
-                        }) {
-                            HStack {
-                                Text(llm.name)
-                                if selectedLLM == llm.type {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text(enabledLLMs.first(where: { $0.type == selectedLLM })?.name ?? "Select LLM")
-                            .font(.system(size: 14))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12))
-                    }
-                    .foregroundColor(Color.appIcon)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-                }
-                
-                Menu {
-                    if isLoadingModels {
-                        Text("Loading models...")
-                    } else {
-                        ForEach(availableModels, id: \.self) { model in
-                            Button(action: {
-                                selectedModel = model
-                            }) {
-                                HStack {
-                                    Text(model)
-                                    if selectedModel == model {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        if isLoadingModels {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Text(selectedModel.isEmpty ? "Select Model" : 
-                                (selectedModel.count > 12 ? String(selectedModel.prefix(12)) + "..." : selectedModel))
-                                .font(.system(size: 14))
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 12))
-                        }
-                    }
-                    .foregroundColor(Color.appIcon)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-                }
-            }
-            .padding(.horizontal, 4)
-        }
-    }
-
+        
     var body: some View {
         VStack(spacing: 0) {
             // Attachment preview section
@@ -185,13 +81,14 @@ struct MessageInputView: View {
                 } label: {
                     HStack {
                         Text(enabledLLMs.first(where: { $0.type == selectedLLM })?.name ?? "LLM")
-                            .font(.system(size: 12))
+                            .font(.system(size: 13))
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 10))
+                            .font(.system(size: 13))
                     }
+                    .frame(width: 100, height: 30)
                     .foregroundColor(Color.appIcon)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 2)
                     .background(Color(.systemGray5))
                     .cornerRadius(8)
                 }
@@ -221,12 +118,13 @@ struct MessageInputView: View {
                                 .scaleEffect(0.6)
                         } else {
                             Text(selectedModel.isEmpty ? "Model" : 
-                                (selectedModel.count > 12 ? String(selectedModel.prefix(12)) + "..." : selectedModel))
-                                .font(.system(size: 12))
+                                (selectedModel.count > 24 ? String(selectedModel.prefix(24)) + "..." : selectedModel))
+                                .font(.system(size: 13))
                             Image(systemName: "chevron.down")
-                                .font(.system(size: 10))
+                                .font(.system(size: 13))
                         }
                     }
+                    .frame(width: 170, height: 30)
                     .foregroundColor(Color.appIcon)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)

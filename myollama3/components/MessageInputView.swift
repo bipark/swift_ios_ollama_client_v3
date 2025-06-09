@@ -138,21 +138,18 @@ struct MessageInputView: View {
             
             // Main input area
             HStack(alignment: .bottom, spacing: 8) {
-                TextEditor(text: $text)
+                TextField("메시지를 입력하세요...", text: $text, axis: .vertical)
                     .font(.system(size: 14))
                     .focused($isFocused)
-                    .frame(minHeight: textHeight, maxHeight: 60)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                     .background(Color(.systemGray6))
                     .cornerRadius(10)
                     .onSubmit {
                         if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isLoading {
                             onSend()
                         }
-                    }
-                    .onChange(of: text) { _ in
-                        textHeight = calculateTextHeight()
                     }
                 
                 VStack(spacing: 6) {

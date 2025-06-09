@@ -80,6 +80,7 @@ struct MessageBubble: View {
                     
                     if !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text(message.content)
+                            .font(.system(size: 14))
                             .padding(12)
                             .background(Color.appUserMessage)
                             .foregroundColor(Color(UIColor.systemBackground))

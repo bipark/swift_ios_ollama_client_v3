@@ -56,11 +56,6 @@ struct MessageInputView: View {
         
     var body: some View {
         VStack(spacing: 0) {
-            // Attachment preview section
-            if selectedImage != nil || selectedPDFText != nil || selectedTXTText != nil {
-                attachmentPreviewSection
-            }
-            
             // LLM and Model selection (more compact version)
             HStack(spacing: 8) {
                 // LLM Selection
@@ -135,7 +130,15 @@ struct MessageInputView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 4)
+
+            // Attachment preview section
+            if selectedImage != nil || selectedPDFText != nil || selectedTXTText != nil {
+                attachmentPreviewSection
+                    .padding(.vertical, 4)
+            }
             
+            
+
             // Main input area
             HStack(alignment: .bottom, spacing: 8) {
                 TextField("메시지를 입력하세요...", text: $text, axis: .vertical)

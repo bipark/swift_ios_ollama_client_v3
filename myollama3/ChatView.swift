@@ -62,8 +62,8 @@ struct ChatView: View {
         }
     }
     
-    var body: some View {
-        GeometryReader { geometry in
+        var body: some View {
+        ZStack {
             VStack(spacing: 0) {
                 if isModelLoading {
                     HStack {
@@ -76,6 +76,7 @@ struct ChatView: View {
                     }
                     .padding()
                     .dismissKeyboardOnTap(focusState: $isInputFocused)
+                    Spacer()
                 } else if isModelLoadingFailed {
                     VStack {
                         Image(systemName: "exclamationmark.triangle")
@@ -200,37 +201,35 @@ struct ChatView: View {
                 
                 Spacer()
             }
-            .overlay(
-                VStack {
-                    Spacer()
+            
+            // MessageInputView를 ZStack으로 절대 위치 지정
+            VStack {
+                Spacer()
+                
+                if !isModelLoading && !isModelLoadingFailed {
+                    Divider()
                     
-                    VStack(spacing: 0) {
-                        if !isModelLoading && !isModelLoadingFailed {
-                            Divider()
-                            
-                            MessageInputView(
-                                text: $newMessage,
-                                isLoading: ollamaService.isLoading,
-                                shouldFocus: isNewConversation,
-                                onSend: sendMessage,
-                                selectedImage: $selectedImage,
-                                selectedPDFText: $selectedPDFText,
-                                selectedTXTText: $selectedTXTText,
-                                isInputFocused: $isInputFocused,
-                                selectedLLM: $selectedLLM,
-                                selectedModel: $selectedModel,
-                                enabledLLMs: settings.getEnabledLLMs(),
-                                llmBridge: llmBridge
-                            )
-                            .frame(maxHeight: calculateInputViewHeight())
-                            .background(Color(.systemBackground))
-                        }
-                    }
-                    .padding(.bottom, keyboardHeight > 0 ? keyboardHeight : getSafeAreaInsets().bottom)
-                },
-                alignment: .bottom
-            )
+                    MessageInputView(
+                        text: $newMessage,
+                        isLoading: ollamaService.isLoading,
+                        shouldFocus: isNewConversation,
+                        onSend: sendMessage,
+                        selectedImage: $selectedImage,
+                        selectedPDFText: $selectedPDFText,
+                        selectedTXTText: $selectedTXTText,
+                        isInputFocused: $isInputFocused,
+                        selectedLLM: $selectedLLM,
+                        selectedModel: $selectedModel,
+                        enabledLLMs: settings.getEnabledLLMs(),
+                        llmBridge: llmBridge
+                    )
+                    .background(Color(.systemBackground))
+                    .padding(.bottom, keyboardHeight > 0 ? 0 : getSafeAreaInsets().bottom)
+                }
+            }
+            .offset(y: keyboardHeight > 0 ? -keyboardHeight : 0)
         }
+        // .ignoresSafeArea(.keyboard)
         .contentShape(Rectangle())
         .simultaneousGesture(TapGesture().onEnded {
             hideKeyboard()

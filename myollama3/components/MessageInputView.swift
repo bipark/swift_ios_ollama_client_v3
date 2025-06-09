@@ -36,7 +36,7 @@ struct MessageInputView: View {
     
     private func calculateTextHeight() -> CGFloat {
         let minHeight: CGFloat = 32
-        let maxHeight: CGFloat = 100
+        let maxHeight: CGFloat = 60
         
         guard !text.isEmpty else { return minHeight }
         
@@ -117,8 +117,7 @@ struct MessageInputView: View {
                             ProgressView()
                                 .scaleEffect(0.6)
                         } else {
-                            Text(selectedModel.isEmpty ? "Model" : 
-                                (selectedModel.count > 24 ? String(selectedModel.prefix(24)) + "..." : selectedModel))
+                            Text(selectedModel.isEmpty ? "Model" : selectedModel)
                                 .font(.system(size: 13))
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 13))
@@ -139,55 +138,54 @@ struct MessageInputView: View {
             
             // Main input area
             HStack(alignment: .bottom, spacing: 8) {
-                HStack(alignment: .bottom, spacing: 8) {
-                    TextEditor(text: $text)
-                        .focused($isFocused)
-                        .frame(minHeight: textHeight, maxHeight: 100)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(16)
-                        .onSubmit {
-                            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isLoading {
-                                onSend()
-                            }
+                TextEditor(text: $text)
+                    .font(.system(size: 14))
+                    .focused($isFocused)
+                    .frame(minHeight: textHeight, maxHeight: 60)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+                    .onSubmit {
+                        if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isLoading {
+                            onSend()
                         }
-                        .onChange(of: text) { _ in
-                            textHeight = calculateTextHeight()
-                        }
-                    
-                    VStack(spacing: 6) {
-                        Button(action: {
-                            showAttachmentMenu = true
-                        }) {
-                            Image(systemName: "paperclip")
-                                .font(.system(size: 18))
-                                .foregroundColor(Color.appIcon)
-                        }
-                        
-                        Button(action: onSend) {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(0.7)
-                            } else {
-                                Image(systemName: "arrow.up")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .frame(width: 28, height: 28)
-                        .background(
-                            Circle().fill(
-                                text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading 
-                                ? Color.gray 
-                                : Color.appPrimary
-                            )
-                        )
-                        .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading)
                     }
-                    .padding(.bottom, 2)
+                    .onChange(of: text) { _ in
+                        textHeight = calculateTextHeight()
+                    }
+                
+                VStack(spacing: 6) {
+                    Button(action: {
+                        showAttachmentMenu = true
+                    }) {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 18))
+                            .foregroundColor(Color.appIcon)
+                    }
+                    
+                    Button(action: onSend) {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle().fill(
+                            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading
+                            ? Color.gray
+                            : Color.appPrimary
+                        )
+                    )
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedImage == nil && selectedPDFText == nil && selectedTXTText == nil || isLoading)
                 }
+                .padding(.bottom, 2)
             }
             .padding(12)
             .background(Color(.systemGray6))

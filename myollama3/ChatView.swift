@@ -13,10 +13,10 @@ import PhotosUI
 import Combine
 
 
-typealias Message = OllamaService.Message
+typealias Message = LLMBridge.Message
 
 struct ChatView: View {
-    @StateObject private var ollamaService: OllamaService
+    @StateObject private var llmBridge: LLMBridge
     
     @State private var newMessage = ""
     @State private var selectedModel: String
@@ -37,8 +37,12 @@ struct ChatView: View {
     @State private var showShareAllSheet = false
     @StateObject private var settings = SettingsManager()
     @State private var selectedLLM: LLMTarget = .ollama
-    private var llmBridge: LLMBridge
-
+    private var llmBridgeForInput: LLMBridge
+    
+    // Database and conversation management
+    private let databaseService = DatabaseService()
+    private let conversationId: String
+    private var baseURL: URL
     
     private let selectedModelKey = "selected_model"
     private let defaultModel = "llama"
@@ -50,9 +54,11 @@ struct ChatView: View {
         let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
         let port = url.port ?? 11434
         
-        _ollamaService = StateObject(wrappedValue: OllamaService(baseURL: url, conversationId: conversationId))
-        self.llmBridge = LLMBridge(baseURL: baseURLString, port: port)
+        _llmBridge = StateObject(wrappedValue: LLMBridge(baseURL: baseURLString, port: port, target: .ollama))
+        self.llmBridgeForInput = LLMBridge(baseURL: baseURLString, port: port, target: .ollama)
         
+        self.conversationId = conversationId ?? UUID().uuidString
+        self.baseURL = url
         _isNewConversation = State(initialValue: conversationId == nil)
         
         if let modelName = UserDefaults.standard.string(forKey: selectedModelKey) {
@@ -62,7 +68,7 @@ struct ChatView: View {
         }
     }
     
-        var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             if isModelLoading {
                 HStack {
@@ -108,10 +114,10 @@ struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(ollamaService.messages) { message in
+                            ForEach(llmBridge.messages) { message in
                                 MessageBubble(
                                     message: message,
-                                    allMessages: ollamaService.messages,
+                                    allMessages: llmBridge.messages,
                                     onDelete: {
                                         messageToDelete = message.id
                                         showDeleteConfirmation = true
@@ -120,9 +126,9 @@ struct ChatView: View {
                                 .dismissKeyboardOnTap(focusState: $isInputFocused)
                             }
                             
-                            if !ollamaService.currentResponse.isEmpty {
+                            if !llmBridge.currentResponse.isEmpty {
                                 HStack {
-                                    Markdown(ollamaService.currentResponse)
+                                    Markdown(llmBridge.currentResponse)
                                         .padding(12)
                                         .background(Color(.systemGray5))
                                         .foregroundColor(.primary)
@@ -135,7 +141,7 @@ struct ChatView: View {
                                 .dismissKeyboardOnTap(focusState: $isInputFocused)
                             }
                             
-                            if ollamaService.isLoading && ollamaService.currentResponse.isEmpty {
+                            if llmBridge.isLoading && llmBridge.currentResponse.isEmpty {
                                 HStack {
                                     Text("l_thinking".localized)
                                         .padding(12)
@@ -146,7 +152,7 @@ struct ChatView: View {
                                     Spacer()
                                     
                                     Button {
-                                        ollamaService.cancelGeneration()
+                                        llmBridge.cancelGeneration()
                                     } label: {
                                         Text("l_cancel_generation".localized)
                                             .padding(8)
@@ -159,7 +165,7 @@ struct ChatView: View {
                                 .dismissKeyboardOnTap(focusState: $isInputFocused)
                             }
                             
-                            if let error = ollamaService.errorMessage {
+                            if let error = llmBridge.errorMessage {
                                 HStack {
                                     Text(String(format: "l_error_prefix".localized, error))
                                         .padding(12)
@@ -174,15 +180,15 @@ struct ChatView: View {
                             }
                         }
                         .padding()
-                        .onChange(of: ollamaService.messages.count) { _ in
-                            if let lastMessage = ollamaService.messages.last {
+                        .onChange(of: llmBridge.messages.count) { _ in
+                            if let lastMessage = llmBridge.messages.last {
                                 withAnimation {
                                     proxy.scrollTo(lastMessage.id, anchor: .bottom)
                                 }
                             }
                         }
-                        .onChange(of: ollamaService.currentResponse) { _ in
-                            if !ollamaService.currentResponse.isEmpty {
+                        .onChange(of: llmBridge.currentResponse) { _ in
+                            if !llmBridge.currentResponse.isEmpty {
                                 withAnimation {
                                     proxy.scrollTo("currentResponse", anchor: .bottom)
                                 }
@@ -202,7 +208,7 @@ struct ChatView: View {
                                 
                                 MessageInputView(
                                     text: $newMessage,
-                                    isLoading: ollamaService.isLoading,
+                                    isLoading: llmBridge.isLoading,
                                     shouldFocus: isNewConversation,
                                     onSend: sendMessage,
                                     selectedImage: $selectedImage,
@@ -212,7 +218,7 @@ struct ChatView: View {
                                     selectedLLM: $selectedLLM,
                                     selectedModel: $selectedModel,
                                     enabledLLMs: settings.getEnabledLLMs(),
-                                    llmBridge: llmBridge
+                                    llmBridge: llmBridgeForInput
                                 )
                                 .background(Color(.systemBackground))
                             }
@@ -237,7 +243,7 @@ struct ChatView: View {
                                 let oldModel = selectedModel
                                 selectedModel = model
                                 saveSelectedModel(model)
-                                if !ollamaService.messages.isEmpty && oldModel != model {
+                                if !llmBridge.messages.isEmpty && oldModel != model {
                                     alertMessage = String(format: "l_model_changed".localized, selectedModel)
                                     presentToast(
                                         ToastValue(
@@ -274,7 +280,7 @@ struct ChatView: View {
             
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
-                    if !ollamaService.messages.isEmpty {
+                    if !llmBridge.messages.isEmpty {
                         showShareAllSheet = true
                     } else {
                         presentToast(
@@ -297,6 +303,7 @@ struct ChatView: View {
             isModelLoadingFailed = false
             
             loadAvailableModels()
+            loadConversationHistory()
             
             setupNotificationObservers()
         }
@@ -324,8 +331,8 @@ struct ChatView: View {
     private func loadAvailableModels() {
         Task {
             do {
-                async let modelsTask = ollamaService.getAvailableModels()
-                async let lastModelTask = ollamaService.getLastUsedModel()
+                async let modelsTask = getAvailableModels()
+                async let lastModelTask = getLastUsedModel()
                 
                 let models = try await modelsTask
                 let lastUsedModel = await lastModelTask
@@ -431,10 +438,18 @@ struct ChatView: View {
             
             Task {
                 do {
-                    _ = try await ollamaService.sendMessage(
+                    let message = try await llmBridge.sendMessage(
                         content: finalMessage, 
                         image: imageToSend, 
                         model: selectedModel
+                    )
+                    
+                    // Save to database
+                    await saveMessageToDatabase(
+                        question: finalMessage,
+                        answer: message.content,
+                        image: imageToSend,
+                        engine: selectedModel
                     )
                 } catch {
                     print("Error: \(error.localizedDescription)")
@@ -444,13 +459,34 @@ struct ChatView: View {
     }
     
     private func deleteMessage(id: UUID) {
-        guard let index = ollamaService.messages.firstIndex(where: { $0.id == id }) else {
+        guard let index = llmBridge.messages.firstIndex(where: { $0.id == id }) else {
             return
         }
         
         Task {
             do {
-                try await ollamaService.deleteMessage(at: index)
+                try await deleteMessageFromDatabase(at: index)
+                await MainActor.run {
+                    // Remove from LLMBridge messages
+                    let messageToRemove = llmBridge.messages[index]
+                    let isUserMessage = messageToRemove.isUser
+                    
+                    var indicesToRemove: [Int] = []
+                    
+                    if isUserMessage && index + 1 < llmBridge.messages.count && !llmBridge.messages[index + 1].isUser {
+                        indicesToRemove = [index, index + 1]
+                    }
+                    else if !isUserMessage && index > 0 && llmBridge.messages[index - 1].isUser {
+                        indicesToRemove = [index - 1, index]
+                    }
+                    else {
+                        indicesToRemove = [index]
+                    }
+                    
+                    for i in indicesToRemove.sorted(by: >) {
+                        llmBridge.messages.remove(at: i)
+                    }
+                }
             } catch {
                 await MainActor.run {
                     alertMessage = String(format: "l_cannot_delete_message".localized, error.localizedDescription)
@@ -472,7 +508,8 @@ struct ChatView: View {
         ) { notification in
             if let urlString = notification.userInfo?["url"] as? String,
                let url = URL(string: urlString) {
-                ollamaService.updateBaseURL(url)
+                // Note: URL이 변경되면 앱 재시작이 필요합니다
+                // 현재 ChatView에서는 즉시 반영되지 않습니다
                 
                 isModelLoading = true
                 isModelLoadingFailed = false
@@ -484,11 +521,11 @@ struct ChatView: View {
     private func formatAllMessages() -> String {
         var formattedText = "# \(selectedModel) \("l_conversation".localized)\n\n"
         
-        if ollamaService.messages.isEmpty {
+        if llmBridge.messages.isEmpty {
             return "l_no_conversations".localized
         }
         
-        for (index, message) in ollamaService.messages.enumerated() {
+        for (index, message) in llmBridge.messages.enumerated() {
             if message.isUser {
                 formattedText += "## \(String(format: "l_question".localized, index/2 + 1))\n"
                 var content = message.content
@@ -504,7 +541,7 @@ struct ChatView: View {
                 formattedText += "### \("l_answer".localized)\n"
                 formattedText += "\(message.content)\n\n"
                 
-                if index < ollamaService.messages.count - 1 {
+                if index < llmBridge.messages.count - 1 {
                     formattedText += "---\n\n"
                 }
             }
@@ -517,12 +554,165 @@ struct ChatView: View {
         
         formattedText += "\n\n\(String(format: "l_generated_time".localized, dateString))\n"
         formattedText += "\(String(format: "l_model".localized, selectedModel))\n"
-        formattedText += "\(String(format: "l_server".localized, ollamaService.getBaseURL().absoluteString))"
+        formattedText += "\(String(format: "l_server".localized, getBaseURL().absoluteString))"
         
         return formattedText
     }
     
-
+    // MARK: - Database Methods
+    
+    private func getAvailableModels() async throws -> [String] {
+        let models = await llmBridge.getAvailableModels()
+        return models.isEmpty ? [defaultModel] : models
+    }
+    
+    private func loadConversationHistory() {
+        Task {
+            do {
+                let conversations = try databaseService.getQuestionsForGroup(groupId: conversationId)
+                
+                await MainActor.run {
+                    llmBridge.messages.removeAll()
+                    
+                    for conversation in conversations {
+                        var userImage: UIImage? = nil
+                        if let imageBase64 = conversation.image {
+                            userImage = convertBase64ToImage(imageBase64)
+                        }
+                        
+                        let userMessage = LLMBridge.Message(content: conversation.question, isUser: true, image: userImage)
+                        let aiMessage = LLMBridge.Message(content: conversation.answer, isUser: false, image: nil)
+                        
+                        llmBridge.messages.append(userMessage)
+                        llmBridge.messages.append(aiMessage)
+                    }
+                }
+            } catch {
+                print(String(format: "l_conversation_history_error".localized, error.localizedDescription))
+            }
+        }
+    }
+    
+    private func saveMessageToDatabase(question: String, answer: String, image: UIImage?, engine: String) async {
+        do {
+            var imageBase64: String? = nil
+            if let image = image {
+                imageBase64 = encodeImageToBase64(image)
+            }
+            
+            try databaseService.saveQuestion(
+                groupId: conversationId,
+                instruction: nil,
+                question: question,
+                answer: answer,
+                image: imageBase64,
+                engine: engine,
+                baseUrl: baseURL.absoluteString
+            )
+        } catch {
+            print("Failed to save to database: \(error)")
+        }
+    }
+    
+    private func deleteMessageFromDatabase(at index: Int) async throws {
+        let conversations = try databaseService.getQuestionsForGroup(groupId: conversationId)
+        
+        guard index < llmBridge.messages.count else { return }
+        
+        let messageToRemove = llmBridge.messages[index]
+        let isUserMessage = messageToRemove.isUser
+        
+        var indicesToRemove: [Int] = []
+        
+        if isUserMessage && index + 1 < llmBridge.messages.count && !llmBridge.messages[index + 1].isUser {
+            indicesToRemove = [index, index + 1]
+        }
+        else if !isUserMessage && index > 0 && llmBridge.messages[index - 1].isUser {
+            indicesToRemove = [index - 1, index]
+        }
+        else {
+            indicesToRemove = [index]
+        }
+        
+        guard let maxIndex = indicesToRemove.max(), maxIndex < conversations.count * 2 else {
+            throw NSError(domain: "ChatView", code: 1, userInfo: [NSLocalizedDescriptionKey: "l_index_out_of_range".localized])
+        }
+        
+        var createdTimesToDelete: [String] = []
+        
+        for idx in indicesToRemove {
+            let dbIndex = idx / 2
+            
+            if dbIndex < conversations.count && !createdTimesToDelete.contains(conversations[dbIndex].created) {
+                createdTimesToDelete.append(conversations[dbIndex].created)
+            }
+        }
+        
+        for created in createdTimesToDelete {
+            try databaseService.deleteQuestion(groupId: conversationId, created: created)
+        }
+    }
+    
+    private func getLastUsedModel() async -> String? {
+        guard !conversationId.isEmpty else { return nil }
+        
+        do {
+            let conversations = try databaseService.getQuestionsForGroup(groupId: conversationId)
+            
+            if let lastConversation = conversations.last {
+                return lastConversation.engine
+            }
+            
+            return nil
+        } catch {
+            print(String(format: "l_last_model_error".localized, error.localizedDescription))
+            return nil
+        }
+    }
+    
+    private func convertBase64ToImage(_ base64String: String) -> UIImage? {
+        guard let imageData = Data(base64Encoded: base64String) else {
+            print("l_base64_decoding_failed".localized)
+            return nil
+        }
+        
+        return UIImage(data: imageData)
+    }
+    
+    private func encodeImageToBase64(_ image: UIImage, compressionQuality: CGFloat = 0.8) -> String? {
+        let resizedImage = resizeImageIfNeeded(image, maxSize: 1024)
+        
+        guard let imageData = resizedImage.jpegData(compressionQuality: compressionQuality) else {
+            print("l_image_compression_failed".localized)
+            return nil
+        }
+        return imageData.base64EncodedString()
+    }
+    
+    private func resizeImageIfNeeded(_ image: UIImage, maxSize: CGFloat) -> UIImage {
+        let size = image.size
+        let maxDimension = max(size.width, size.height)
+        
+        if maxDimension <= maxSize {
+            return image
+        }
+        
+        let scaleFactor = maxSize / maxDimension
+        let newWidth = size.width * scaleFactor
+        let newHeight = size.height * scaleFactor
+        let newSize = CGSize(width: newWidth, height: newHeight)
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resizedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
+        UIGraphicsEndImageContext()
+        
+        return resizedImage
+    }
+    
+    private func getBaseURL() -> URL {
+        return baseURL
+    }
 }
 
 

@@ -8,7 +8,15 @@
 import Foundation
 import SQLite3
 
-class DatabaseService {
+// MARK: - ConversationGroup type definition for ContentView compatibility
+struct ConversationGroup: Hashable {
+    let id: String
+    let preview: String
+    let lastUsed: Date
+    let messageCount: Int
+}
+
+class DatabaseService: ObservableObject {
     // MARK: - Properties
     private var db: OpaquePointer?
     private let dbPath: String
@@ -175,6 +183,99 @@ class DatabaseService {
         return results
     }
     
+    // MARK: - ContentView compatibility methods
+    
+    func getAllConversations() throws -> [ConversationGroup] {
+        let queryStatementString = """
+        SELECT 
+            groupid, 
+            question as first_question,
+            MAX(created) as last_created,
+            COUNT(*) as message_count
+        FROM questions 
+        GROUP BY groupid 
+        ORDER BY last_created DESC;
+        """
+        
+        var queryStatement: OpaquePointer?
+        var results: [ConversationGroup] = []
+        
+        if sqlite3_prepare_v2(db, queryStatementString, -1, &queryStatement, nil) == SQLITE_OK {
+            while sqlite3_step(queryStatement) == SQLITE_ROW {
+                let groupId = String(cString: sqlite3_column_text(queryStatement, 0))
+                let firstQuestion = String(cString: sqlite3_column_text(queryStatement, 1))
+                let lastCreatedString = String(cString: sqlite3_column_text(queryStatement, 2))
+                let messageCount = Int(sqlite3_column_int(queryStatement, 3))
+                
+                // Parse ISO8601 date
+                let dateFormatter = ISO8601DateFormatter()
+                let lastUsed = dateFormatter.date(from: lastCreatedString) ?? Date()
+                
+                // Use first question as preview (truncate if too long)
+                let preview = firstQuestion.count > 50 ? String(firstQuestion.prefix(50)) + "..." : firstQuestion
+                
+                let conversation = ConversationGroup(
+                    id: groupId,
+                    preview: preview,
+                    lastUsed: lastUsed,
+                    messageCount: messageCount
+                )
+                
+                results.append(conversation)
+            }
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            throw DatabaseError.queryFailed(errorMessage)
+        }
+        
+        sqlite3_finalize(queryStatement)
+        return results
+    }
+    
+    func deleteConversation(groupId: String) throws {
+        let deleteStatementString = "DELETE FROM questions WHERE groupid = ?;"
+        
+        var deleteStatement: OpaquePointer?
+        
+        if sqlite3_prepare_v2(db, deleteStatementString, -1, &deleteStatement, nil) == SQLITE_OK {
+            sqlite3_bind_text(deleteStatement, 1, (groupId as NSString).utf8String, -1, nil)
+            
+            if sqlite3_step(deleteStatement) == SQLITE_DONE {
+                print("Successfully deleted conversation")
+            } else {
+                let errorMessage = String(cString: sqlite3_errmsg(db))
+                throw DatabaseError.queryFailed(errorMessage)
+            }
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            throw DatabaseError.prepareFailed(errorMessage)
+        }
+        
+        sqlite3_finalize(deleteStatement)
+    }
+    
+    func clearAllConversations() throws {
+        let deleteStatementString = "DELETE FROM questions;"
+        
+        var deleteStatement: OpaquePointer?
+        
+        if sqlite3_prepare_v2(db, deleteStatementString, -1, &deleteStatement, nil) == SQLITE_OK {
+            if sqlite3_step(deleteStatement) == SQLITE_DONE {
+                print("Successfully cleared all conversations")
+            } else {
+                let errorMessage = String(cString: sqlite3_errmsg(db))
+                throw DatabaseError.queryFailed(errorMessage)
+            }
+        } else {
+            let errorMessage = String(cString: sqlite3_errmsg(db))
+            throw DatabaseError.prepareFailed(errorMessage)
+        }
+        
+        sqlite3_finalize(deleteStatement)
+    }
+    
+    // MARK: - Legacy methods (kept for compatibility)
+    
     func getAllGroups() throws -> [(groupId: String, lastCreated: String, baseUrl: String?)] {
         let queryStatementString = """
         SELECT groupid, MAX(created) as last_created, baseurl FROM questions 
@@ -207,25 +308,7 @@ class DatabaseService {
     }
     
     func deleteGroup(groupId: String) throws {
-        let deleteStatementString = "DELETE FROM questions WHERE groupid = ?;"
-        
-        var deleteStatement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, deleteStatementString, -1, &deleteStatement, nil) == SQLITE_OK {
-            sqlite3_bind_text(deleteStatement, 1, (groupId as NSString).utf8String, -1, nil)
-            
-            if sqlite3_step(deleteStatement) == SQLITE_DONE {
-                print("Successfully deleted group")
-            } else {
-                let errorMessage = String(cString: sqlite3_errmsg(db))
-                throw DatabaseError.queryFailed(errorMessage)
-            }
-        } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
-            throw DatabaseError.prepareFailed(errorMessage)
-        }
-        
-        sqlite3_finalize(deleteStatement)
+        try deleteConversation(groupId: groupId)
     }
     
     func deleteQuestion(groupId: String, created: String) throws {
@@ -252,23 +335,7 @@ class DatabaseService {
     }
     
     func deleteAllData() throws {
-        let deleteStatementString = "DELETE FROM questions;"
-        
-        var deleteStatement: OpaquePointer?
-        
-        if sqlite3_prepare_v2(db, deleteStatementString, -1, &deleteStatement, nil) == SQLITE_OK {
-            if sqlite3_step(deleteStatement) == SQLITE_DONE {
-                print("Successfully deleted all data")
-            } else {
-                let errorMessage = String(cString: sqlite3_errmsg(db))
-                throw DatabaseError.queryFailed(errorMessage)
-            }
-        } else {
-            let errorMessage = String(cString: sqlite3_errmsg(db))
-            throw DatabaseError.prepareFailed(errorMessage)
-        }
-        
-        sqlite3_finalize(deleteStatement)
+        try clearAllConversations()
     }
     
     deinit {

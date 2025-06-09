@@ -6,100 +6,7 @@
 //
 
 import SwiftUI
-
-class SettingsManager: ObservableObject {
-    @Published var baseURL: String
-    @Published var lmStudioURL: String
-    @Published var claudeAPIKey: String
-    @Published var openAIAPIKey: String
-    @Published var instruction: String
-    @Published var temperature: Double
-    @Published var topP: Double
-    @Published var topK: Int
-    @Published var isOllamaEnabled: Bool
-    @Published var isLMStudioEnabled: Bool
-    @Published var isClaudeEnabled: Bool
-    @Published var isOpenAIEnabled: Bool
-    
-    private let baseURLKey = "ollama_base_url"
-    private let lmStudioURLKey = "lmstudio_base_url"
-    private let claudeAPIKeyKey = "claude_api_key"
-    private let openAIAPIKeyKey = "openai_api_key"
-    private let instructionKey = "ollama_instruction"
-    private let temperatureKey = "ollama_temperature"
-    private let topPKey = "ollama_top_p"
-    private let topKKey = "ollama_top_k"
-    private let isOllamaEnabledKey = "is_ollama_enabled"
-    private let isLMStudioEnabledKey = "is_lmstudio_enabled"
-    private let isClaudeEnabledKey = "is_claude_enabled"
-    private let isOpenAIEnabledKey = "is_openai_enabled"
-    
-    init() {
-        self.baseURL = UserDefaults.standard.string(forKey: baseURLKey) ?? "http://192.168.0.6:11434"
-        self.lmStudioURL = UserDefaults.standard.string(forKey: lmStudioURLKey) ?? "http://192.168.0.6:1234"
-        self.claudeAPIKey = UserDefaults.standard.string(forKey: claudeAPIKeyKey) ?? ""
-        self.openAIAPIKey = UserDefaults.standard.string(forKey: openAIAPIKeyKey) ?? ""
-        self.instruction = UserDefaults.standard.string(forKey: instructionKey) ?? "l_default_instruction".localized
-        self.temperature = UserDefaults.standard.double(forKey: temperatureKey)
-        self.topP = UserDefaults.standard.double(forKey: topPKey)
-        self.topK = UserDefaults.standard.integer(forKey: topKKey)
-        self.isOllamaEnabled = UserDefaults.standard.bool(forKey: isOllamaEnabledKey)
-        self.isLMStudioEnabled = UserDefaults.standard.bool(forKey: isLMStudioEnabledKey)
-        self.isClaudeEnabled = UserDefaults.standard.bool(forKey: isClaudeEnabledKey)
-        self.isOpenAIEnabled = UserDefaults.standard.bool(forKey: isOpenAIEnabledKey)
-        
-        if self.temperature == 0 {
-            self.temperature = 0.7
-        }
-        
-        if self.topP == 0 {
-            self.topP = 0.9
-        }
-        
-        if self.topK == 0 {
-            self.topK = 40
-        }
-        
-        if !UserDefaults.standard.bool(forKey: "default_settings_initialized") {
-            self.isOllamaEnabled = true
-            UserDefaults.standard.set(true, forKey: "default_settings_initialized")
-        }
-    }
-    
-    func saveSettings() {
-        UserDefaults.standard.set(baseURL, forKey: baseURLKey)
-        UserDefaults.standard.set(lmStudioURL, forKey: lmStudioURLKey)
-        UserDefaults.standard.set(claudeAPIKey, forKey: claudeAPIKeyKey)
-        UserDefaults.standard.set(openAIAPIKey, forKey: openAIAPIKeyKey)
-        UserDefaults.standard.set(instruction, forKey: instructionKey)
-        UserDefaults.standard.set(temperature, forKey: temperatureKey)
-        UserDefaults.standard.set(topP, forKey: topPKey)
-        UserDefaults.standard.set(topK, forKey: topKKey)
-        UserDefaults.standard.set(isOllamaEnabled, forKey: isOllamaEnabledKey)
-        UserDefaults.standard.set(isLMStudioEnabled, forKey: isLMStudioEnabledKey)
-        UserDefaults.standard.set(isClaudeEnabled, forKey: isClaudeEnabledKey)
-        UserDefaults.standard.set(isOpenAIEnabled, forKey: isOpenAIEnabledKey)
-    }
-    
-    func getEnabledLLMs() -> [(name: String, type: LLMTarget)] {
-        var enabledLLMs: [(name: String, type: LLMTarget)] = []
-        
-        if isOllamaEnabled {
-            enabledLLMs.append(("Ollama", .ollama))
-        }
-        if isLMStudioEnabled {
-            enabledLLMs.append(("LMStudio", .lmstudio))
-        }
-        if isClaudeEnabled {
-            enabledLLMs.append(("Claude", .claude))
-        }
-        if isOpenAIEnabled {
-            enabledLLMs.append(("OpenAI", .openai))
-        }
-        
-        return enabledLLMs
-    }
-}
+import Toasts
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -118,8 +25,8 @@ struct SettingsView: View {
     
     @State private var appVersion = ""
     @State private var buildNumber = ""
+    @StateObject private var llmBridge: LLMBridge
 
-    
     private let databaseService = DatabaseService()
     
     enum ConnectionStatus: Equatable {
@@ -163,15 +70,30 @@ struct SettingsView: View {
         }
     }
     
+    init() {
+        let urlString = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
+        let url = URL(string: urlString)!
+        let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
+        let port = url.port ?? 11434
+        
+        _llmBridge = StateObject(wrappedValue: LLMBridge(baseURL: baseURLString, port: port, target: .ollama))
+    }
+    
     var body: some View {
         Form {
             Section(header: Text("LLM Servers")) {
                 // Ollama Server
-                Toggle(isOn: $settings.isOllamaEnabled) {
+                Toggle(isOn: Binding(
+                    get: { settings.isLLMEnabled(.ollama) },
+                    set: { settings.setLLMEnabled(.ollama, enabled: $0) }
+                )) {
                     Text("Ollama Server")
                 }
-                if settings.isOllamaEnabled {
-                    TextField("Base URL", text: $settings.baseURL)
+                if settings.isLLMEnabled(.ollama) {
+                    TextField("Base URL", text: Binding(
+                        get: { UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434" },
+                        set: { UserDefaults.standard.set($0, forKey: "ollama_base_url") }
+                    ))
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .keyboardType(.URL)
@@ -198,10 +120,16 @@ struct SettingsView: View {
                 }
 
                 // LMStudio Server
-                Toggle(isOn: $settings.isLMStudioEnabled) {
+                Toggle(isOn: Binding(
+                    get: { settings.isLLMEnabled(.lmstudio) },
+                    set: { settings.setLLMEnabled(.lmstudio, enabled: $0) }
+                )) {
                     Text("LMStudio")
                 }
-                TextField("Base URL", text: $settings.lmStudioURL)
+                TextField("Base URL", text: Binding(
+                    get: { UserDefaults.standard.string(forKey: "lmstudio_base_url") ?? "http://192.168.0.1:1234" },
+                    set: { UserDefaults.standard.set($0, forKey: "lmstudio_base_url") }
+                ))
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
                     .keyboardType(.URL)
@@ -229,10 +157,16 @@ struct SettingsView: View {
 
             // Claude API Section
             Section(header: Text("Claude API")) {
-                Toggle(isOn: $settings.isClaudeEnabled) {
+                Toggle(isOn: Binding(
+                    get: { settings.isLLMEnabled(.claude) },
+                    set: { settings.setLLMEnabled(.claude, enabled: $0) }
+                )) {
                     Text("Enable Claude")
                 }
-                TextField("API Key", text: $settings.claudeAPIKey)
+                TextField("API Key", text: Binding(
+                    get: { UserDefaults.standard.string(forKey: "claude_api_key") ?? "" },
+                    set: { UserDefaults.standard.set($0, forKey: "claude_api_key") }
+                ))
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
 
@@ -240,45 +174,60 @@ struct SettingsView: View {
 
             // OpenAI API Section
             Section(header: Text("OpenAI API")) {
-                Toggle(isOn: $settings.isOpenAIEnabled) {
+                Toggle(isOn: Binding(
+                    get: { settings.isLLMEnabled(.openai) },
+                    set: { settings.setLLMEnabled(.openai, enabled: $0) }
+                )) {
                     Text("Enable OpenAI")
                 }
-                TextField("API Key", text: $settings.openAIAPIKey)
+                TextField("API Key", text: Binding(
+                    get: { UserDefaults.standard.string(forKey: "openai_api_key") ?? "" },
+                    set: { UserDefaults.standard.set($0, forKey: "openai_api_key") }
+                ))
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
             }
             
             Section(header: Text("l_llm_instructions".localized), footer: Text("l_llm_instructions_desc".localized)) {
-                TextEditor(text: $settings.instruction)
+                TextEditor(text: Binding(
+                    get: { UserDefaults.standard.string(forKey: "instruction") ?? "" },
+                    set: { UserDefaults.standard.set($0, forKey: "instruction") }
+                ))
                     .frame(minHeight: 100)
                     .autocorrectionDisabled()
             }
             
             Section(header: Text("l_temperature".localized), footer: Text("l_temperature_desc".localized)) {
                 HStack {
-                    Text(String(format: "%.1f", settings.temperature))
+                    Text(String(format: "%.1f", UserDefaults.standard.double(forKey: "temperature") != 0 ? UserDefaults.standard.double(forKey: "temperature") : 0.7))
                         .frame(width: 40)
-                    Slider(value: $settings.temperature, in: 0.1...2.0, step: 0.1)
+                    Slider(value: Binding(
+                        get: { UserDefaults.standard.double(forKey: "temperature") != 0 ? UserDefaults.standard.double(forKey: "temperature") : 0.7 },
+                        set: { UserDefaults.standard.set($0, forKey: "temperature") }
+                    ), in: 0.1...2.0, step: 0.1)
                         .accentColor(Color.appPrimary)
                 }
             }
             
             Section(header: Text("l_top_p".localized), footer: Text("l_top_p_desc".localized)) {
                 HStack {
-                    Text(String(format: "%.1f", settings.topP))
+                    Text(String(format: "%.1f", UserDefaults.standard.double(forKey: "top_p") != 0 ? UserDefaults.standard.double(forKey: "top_p") : 0.9))
                         .frame(width: 40)
-                    Slider(value: $settings.topP, in: 0.1...1.0, step: 0.1)
+                    Slider(value: Binding(
+                        get: { UserDefaults.standard.double(forKey: "top_p") != 0 ? UserDefaults.standard.double(forKey: "top_p") : 0.9 },
+                        set: { UserDefaults.standard.set($0, forKey: "top_p") }
+                    ), in: 0.1...1.0, step: 0.1)
                         .accentColor(Color.appPrimary)
                 }
             }
             
             Section(header: Text("l_top_k".localized), footer: Text("l_top_k_desc".localized)) {
                 HStack {
-                    Text("\(settings.topK)")
+                    Text("\(UserDefaults.standard.integer(forKey: "top_k") != 0 ? UserDefaults.standard.integer(forKey: "top_k") : 40)")
                         .frame(width: 40)
                     Slider(value: Binding(
-                        get: { Double(settings.topK) },
-                        set: { settings.topK = Int($0) }
+                        get: { Double(UserDefaults.standard.integer(forKey: "top_k") != 0 ? UserDefaults.standard.integer(forKey: "top_k") : 40) },
+                        set: { UserDefaults.standard.set(Int($0), forKey: "top_k") }
                     ), in: 1...100, step: 1)
                         .accentColor(Color.appPrimary)
                 }
@@ -286,18 +235,18 @@ struct SettingsView: View {
             
             Section (header: Text("l_reset".localized), footer: Text("l_reset_llm_desc".localized)) {
                 Button("l_reset_llm_settings".localized) {
-                    settings.baseURL = "http://192.168.0.1:11434"
-                    settings.lmStudioURL = "http://192.168.0.6:1234"
-                    settings.claudeAPIKey = ""
-                    settings.openAIAPIKey = ""
-                    settings.instruction = "l_default_instruction".localized
-                    settings.temperature = 0.7
-                    settings.topP = 0.9
-                    settings.topK = 40
-                    settings.isOllamaEnabled = true
-                    settings.isLMStudioEnabled = false
-                    settings.isClaudeEnabled = false
-                    settings.isOpenAIEnabled = false
+                    UserDefaults.standard.set("http://192.168.0.1:11434", forKey: "ollama_base_url")
+                    UserDefaults.standard.set("http://192.168.0.1:1234", forKey: "lmstudio_base_url")
+                    UserDefaults.standard.set("", forKey: "claude_api_key")
+                    UserDefaults.standard.set("", forKey: "openai_api_key")
+                    UserDefaults.standard.set("l_default_instruction".localized, forKey: "instruction")
+                    UserDefaults.standard.set(0.7, forKey: "temperature")
+                    UserDefaults.standard.set(0.9, forKey: "top_p")
+                    UserDefaults.standard.set(40, forKey: "top_k")
+                    settings.setLLMEnabled(.ollama, enabled: true)
+                    settings.setLLMEnabled(.lmstudio, enabled: false)
+                    settings.setLLMEnabled(.claude, enabled: false)
+                    settings.setLLMEnabled(.openai, enabled: false)
                 }
                 .foregroundColor(AppColor.link)
             }
@@ -398,12 +347,10 @@ struct SettingsView: View {
         .alert("l_server_connection_failed".localized, isPresented: $showConfirmationAlert) {
             Button("l_cancel".localized, role: .cancel) {}
             Button("l_save_anyway".localized, role: .destructive) {
-                settings.saveSettings()
-                
                 NotificationCenter.default.post(
                     name: Notification.Name("OllamaServerURLChanged"),
                     object: nil,
-                    userInfo: ["url": settings.baseURL]
+                    userInfo: ["url": UserDefaults.standard.string(forKey: "ollama_base_url") ?? ""]
                 )
                 
                 dismiss()
@@ -434,31 +381,37 @@ struct SettingsView: View {
     }
     
     private func saveSettings() {
-        if let url = URL(string: settings.baseURL) {
+        let baseURL = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
+        
+        if let url = URL(string: baseURL) {
             let oldURLString = UserDefaults.standard.string(forKey: "ollama_base_url")
             
-            if oldURLString != settings.baseURL {
+            if oldURLString != baseURL {
                 isSaving = true
-                
-                let tempService = OllamaService(baseURL: url)
                 
                 Task {
                     do {
-                        _ = try await tempService.getAvailableModels()
+                        let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
+                        let port = url.port ?? 11434
+                        let testBridge = LLMBridge(baseURL: baseURLString, port: port, target: .ollama)
+                        
+                        let models = await testBridge.getAvailableModels()
                         
                         await MainActor.run {
                             isSaving = false
                             
-                            settings.saveSettings()
-                            
-                            NotificationCenter.default.post(
-                                name: Notification.Name("OllamaServerURLChanged"),
-                                object: nil,
-                                userInfo: ["url": settings.baseURL]
-                            )
-                            
-                            alertMessage = "l_server_check_complete".localized
-                            showAlert = true
+                            if !models.isEmpty {
+                                NotificationCenter.default.post(
+                                    name: Notification.Name("OllamaServerURLChanged"),
+                                    object: nil,
+                                    userInfo: ["url": baseURL]
+                                )
+                                
+                                alertMessage = "l_server_check_complete".localized
+                                showAlert = true
+                            } else {
+                                showConfirmationAlert = true
+                            }
                         }
                     } catch {
                         await MainActor.run {
@@ -471,7 +424,6 @@ struct SettingsView: View {
                     }
                 }
             } else {
-                settings.saveSettings()
                 alertMessage = "l_server_check_complete".localized
                 showAlert = true
             }
@@ -482,7 +434,8 @@ struct SettingsView: View {
     }
     
     private func checkServerConnection() {
-        guard let url = URL(string: settings.baseURL) else {
+        let baseURL = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
+        guard let url = URL(string: baseURL) else {
             connectionStatus = .failed("l_connection_error".localized)
             return
         }
@@ -492,13 +445,19 @@ struct SettingsView: View {
         
         Task {
             do {
-                let service = OllamaService(baseURL: url)
+                let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
+                let port = url.port ?? 11434
+                let testBridge = LLMBridge(baseURL: baseURLString, port: port, target: .ollama)
                 
-                let models = try await service.getAvailableModels()
+                let models = await testBridge.getAvailableModels()
                 
                 await MainActor.run {
                     isCheckingConnection = false
-                    connectionStatus = .success
+                    if !models.isEmpty {
+                        connectionStatus = .success
+                    } else {
+                        connectionStatus = .failed("No models found")
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -510,7 +469,8 @@ struct SettingsView: View {
     }
     
     private func checkLMStudioConnection() {
-        guard let url = URL(string: settings.lmStudioURL) else {
+        let baseURL = UserDefaults.standard.string(forKey: "lmstudio_base_url") ?? "http://192.168.0.1:1234"
+        guard let url = URL(string: baseURL) else {
             lmStudioConnectionStatus = .failed("l_connection_error".localized)
             return
         }
@@ -520,13 +480,19 @@ struct SettingsView: View {
         
         Task {
             do {
-                let service = OllamaService(baseURL: url)
+                let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
+                let port = url.port ?? 1234
+                let testBridge = LLMBridge(baseURL: baseURLString, port: port, target: .lmstudio)
                 
-                let models = try await service.getAvailableModels()
+                let models = await testBridge.getAvailableModels()
                 
                 await MainActor.run {
                     isCheckingLMStudioConnection = false
-                    lmStudioConnectionStatus = .success
+                    if !models.isEmpty {
+                        lmStudioConnectionStatus = .success
+                    } else {
+                        lmStudioConnectionStatus = .failed("No models found")
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -542,7 +508,7 @@ struct SettingsView: View {
         
         Task {
             do {
-                try databaseService.deleteAllData()
+                try databaseService.clearAllConversations()
                 
                 await MainActor.run {
                     isDeletingData = false
@@ -563,4 +529,65 @@ struct SettingsView: View {
             }
         }
     }
+}
+
+struct LLMRowView: View {
+    let llm: LLMTarget
+    let isEnabled: Bool
+    let onToggle: (Bool) -> Void
+    
+    var body: some View {
+        HStack {
+            Image(systemName: iconForLLM(llm))
+                .foregroundColor(colorForLLM(llm))
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(llm.displayName)
+                    .font(.subheadline)
+                
+                Text(llm.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: Binding(
+                get: { isEnabled },
+                set: { onToggle($0) }
+            ))
+            .labelsHidden()
+        }
+    }
+    
+    private func iconForLLM(_ llm: LLMTarget) -> String {
+        switch llm {
+        case .ollama:
+            return "cpu"
+        case .lmstudio:
+            return "laptopcomputer"
+        case .claude:
+            return "brain.head.profile"
+        case .openai:
+            return "globe"
+        }
+    }
+    
+    private func colorForLLM(_ llm: LLMTarget) -> Color {
+        switch llm {
+        case .ollama:
+            return .blue
+        case .lmstudio:
+            return .purple
+        case .claude:
+            return .orange
+        case .openai:
+            return .green
+        }
+    }
+}
+
+#Preview {
+    SettingsView()
 }

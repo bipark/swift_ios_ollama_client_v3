@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+import Toasts
 
 struct ContentView: View {
     @State private var path = NavigationPath()
@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var errorMessage = ""
     @State private var searchText = ""
     @State private var isSearching = false
+    @StateObject private var databaseService = DatabaseService()
     
     var body: some View {
         NavigationStack(path: $path) {
@@ -122,8 +123,7 @@ struct ContentView: View {
         
         Task {
             do {
-                let service = OllamaService()
-                let loadedConversations = try await service.getAllConversations()
+                let loadedConversations = try await getAllConversations()
                 
                 await MainActor.run {
                     self.conversations = loadedConversations
@@ -148,8 +148,7 @@ struct ContentView: View {
         
         Task {
             do {
-                let service = OllamaService()
-                let searchResults = try await service.searchAllConversations(searchText: searchText)
+                let searchResults = try await searchAllConversations(searchText: searchText)
                 
                 await MainActor.run {
                     self.conversations = searchResults
@@ -168,10 +167,8 @@ struct ContentView: View {
         
         Task {
             do {
-                let service = OllamaService()
-                
                 for id in idsToDelete {
-                    try await service.deleteConversation(groupId: id)
+                    try await deleteConversationFromDatabase(id)
                 }
                 
                 loadConversations()
@@ -182,6 +179,44 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Database Methods (replacing OllamaService methods)
+    
+    private func getAllConversations() async throws -> [(id: String, date: Date, baseUrl: String?, firstQuestion: String, firstAnswer: String, engine: String?, image: String?)] {
+        return try databaseService.getAllGroups().compactMap { group in
+            do {
+                let questions = try databaseService.getQuestionsForGroup(groupId: group.groupId)
+                guard let firstQuestion = questions.first else { return nil }
+                
+                let dateFormatter = ISO8601DateFormatter()
+                let date = dateFormatter.date(from: group.lastCreated) ?? Date()
+                
+                return (
+                    id: group.groupId,
+                    date: date,
+                    baseUrl: group.baseUrl,
+                    firstQuestion: firstQuestion.question,
+                    firstAnswer: firstQuestion.answer,
+                    engine: firstQuestion.engine,
+                    image: firstQuestion.image
+                )
+            } catch {
+                return nil
+            }
+        }
+    }
+    
+    private func searchAllConversations(searchText: String) async throws -> [(id: String, date: Date, baseUrl: String?, firstQuestion: String, firstAnswer: String, engine: String?, image: String?)] {
+        let allConversations = try await getAllConversations()
+        return allConversations.filter { conversation in
+            conversation.firstQuestion.localizedCaseInsensitiveContains(searchText) ||
+            conversation.firstAnswer.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
+    private func deleteConversationFromDatabase(_ conversationId: String) async throws {
+        try databaseService.deleteConversation(groupId: conversationId)
     }
 }
 
@@ -373,3 +408,6 @@ struct ConversationItemView: View {
     }
 }
 
+#Preview {
+    ContentView()
+}

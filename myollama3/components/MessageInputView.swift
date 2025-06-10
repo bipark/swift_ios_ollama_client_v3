@@ -24,6 +24,8 @@ struct MessageInputView: View {
     @Binding var selectedModel: String
     var enabledLLMs: [(name: String, type: LLMTarget)]
     var llmBridge: LLMBridge
+    @EnvironmentObject var settings: SettingsManager
+    var onLLMChanged: ((LLMTarget) -> Void)?
     
     @State private var showImagePicker: Bool = false
     @State private var showImagePreview: Bool = false
@@ -196,6 +198,10 @@ struct MessageInputView: View {
         .onAppear {
             textHeight = calculateTextHeight()
             
+            // Load last used LLM and model
+            loadLastUsedLLM()
+            loadLastUsedModel()
+            
             if shouldFocus {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     isFocused = true
@@ -207,6 +213,15 @@ struct MessageInputView: View {
         }
         .onChange(of: isInputFocused.wrappedValue) { newValue in
             isFocused = newValue
+        }
+        .onChange(of: selectedModel) { newModel in
+            if !newModel.isEmpty {
+                saveLastUsedModel(newModel)
+            }
+        }
+        .onChange(of: selectedLLM) { newLLM in
+            saveLastUsedLLM(newLLM)
+            onLLMChanged?(newLLM)
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedImage: $selectedImage)
@@ -256,19 +271,37 @@ struct MessageInputView: View {
         .task(id: selectedLLM) {
             loadModels()
         }
+        .onChange(of: settings.enabledLLMs.count) { _ in
+            loadModels()
+        }
+        .onReceive(settings.$enabledLLMs) { _ in
+            loadModels()
+        }
     }
     
     private func loadModels() {
         isLoadingModels = true
-        selectedModel = ""
         availableModels = []
         
         Task {
             do {
-                let models = try await llmBridge.getAvailableModels()
+                // Create a new LLMBridge instance for the selected LLM
+                let tempBridge = createLLMBridge(for: selectedLLM)
+                let models = await tempBridge.getAvailableModels()
+                
                 await MainActor.run {
                     self.availableModels = models
                     self.isLoadingModels = false
+                    
+                    // Select last used model if available
+                    if !models.isEmpty {
+                        let lastUsedModel = getLastUsedModel()
+                        if !lastUsedModel.isEmpty && models.contains(lastUsedModel) {
+                            selectedModel = lastUsedModel
+                        } else if selectedModel.isEmpty || !models.contains(selectedModel) {
+                            selectedModel = models.first ?? ""
+                        }
+                    }
                 }
             } catch {
                 print("Failed to load models: \(error)")
@@ -277,6 +310,78 @@ struct MessageInputView: View {
                     self.isLoadingModels = false
                 }
             }
+        }
+    }
+    
+    private func createLLMBridge(for target: LLMTarget) -> LLMBridge {
+        return LLMBridge()
+    }
+    
+    private func getLastUsedModelKey() -> String {
+        switch selectedLLM {
+        case .ollama:
+            return "last_used_model_ollama"
+        case .lmstudio:
+            return "last_used_model_lmstudio"
+        case .claude:
+            return "last_used_model_claude"
+        case .openai:
+            return "last_used_model_openai"
+        }
+    }
+    
+    private func loadLastUsedModel() {
+        let lastModel = getLastUsedModel()
+        if !lastModel.isEmpty {
+            selectedModel = lastModel
+        }
+    }
+    
+    private func getLastUsedModel() -> String {
+        return UserDefaults.standard.string(forKey: getLastUsedModelKey()) ?? ""
+    }
+    
+    private func saveLastUsedModel(_ model: String) {
+        UserDefaults.standard.set(model, forKey: getLastUsedModelKey())
+    }
+    
+    private func loadLastUsedLLM() {
+        let lastLLMString = UserDefaults.standard.string(forKey: "last_used_llm") ?? "ollama"
+        if let lastLLM = getLLMFromString(lastLLMString) {
+            selectedLLM = lastLLM
+        }
+    }
+    
+    private func saveLastUsedLLM(_ llm: LLMTarget) {
+        let llmString = getLLMString(from: llm)
+        UserDefaults.standard.set(llmString, forKey: "last_used_llm")
+    }
+    
+    private func getLLMString(from llm: LLMTarget) -> String {
+        switch llm {
+        case .ollama:
+            return "ollama"
+        case .lmstudio:
+            return "lmstudio"
+        case .claude:
+            return "claude"
+        case .openai:
+            return "openai"
+        }
+    }
+    
+    private func getLLMFromString(_ string: String) -> LLMTarget? {
+        switch string {
+        case "ollama":
+            return .ollama
+        case "lmstudio":
+            return .lmstudio
+        case "claude":
+            return .claude
+        case "openai":
+            return .openai
+        default:
+            return nil
         }
     }
     

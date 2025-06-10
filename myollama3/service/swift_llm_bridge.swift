@@ -51,15 +51,12 @@ public class LLMBridge: ObservableObject {
     @Published public var errorMessage: String? = nil
     @Published public var currentResponse: String = ""
     
-    private let baseURL: URL
-    private let port: Int
-    private let target: LLMTarget
-    private let apiKey: String?
     private var generationTask: Task<Void, Never>?
     private let defaultModel = "llama3.2"
     private var tempResponse: String = ""
     
     private var getDefaultModel: String {
+        let target = getCurrentTarget()
         switch target {
         case .ollama:
             return "llama3.2"
@@ -85,36 +82,69 @@ public class LLMBridge: ObservableObject {
         return URLSession(configuration: configuration)
     }()
     
-    public init(baseURL: String = "http://localhost", port: Int = 11434, target: LLMTarget = .ollama, apiKey: String? = nil) {
-        if target == .claude {
-            guard let url = URL(string: "https://api.anthropic.com") else {
-                fatalError("Invalid Claude API URL")
-            }
-            self.baseURL = url
-            self.port = 443
-        } else if target == .openai {
-            guard let url = URL(string: "https://api.openai.com") else {
-                fatalError("Invalid OpenAI API URL")
-            }
-            self.baseURL = url
-            self.port = 443
-        } else {
-            guard let url = URL(string: "\(baseURL):\(port)") else {
-                fatalError("Invalid base URL")
-            }
-            self.baseURL = url
-            self.port = port
-        }
-        self.target = target
-        self.apiKey = apiKey
+    public init() {
+        // 모든 설정을 동적으로 가져오므로 별도 초기화 불필요
     }
     
-    public func createNewSession(baseURL: String, port: Int, target: LLMTarget, apiKey: String? = nil) -> LLMBridge {
-        return LLMBridge(baseURL: baseURL, port: port, target: target, apiKey: apiKey)
+    public func createNewSession() -> LLMBridge {
+        return LLMBridge()
+    }
+    
+    private func getCurrentTarget() -> LLMTarget {
+        let lastLLMString = UserDefaults.standard.string(forKey: "last_used_llm") ?? "ollama"
+        switch lastLLMString {
+        case "ollama":
+            return .ollama
+        case "lmstudio":
+            return .lmstudio
+        case "claude":
+            return .claude
+        case "openai":
+            return .openai
+        default:
+            return .ollama
+        }
+    }
+    
+    private func getCurrentBaseURL() -> String {
+        let target = getCurrentTarget()
+        switch target {
+        case .ollama:
+            return UserDefaults.standard.string(forKey: "ollama_base_url") ?? ""
+
+        case .lmstudio:
+            return UserDefaults.standard.string(forKey: "lmstudio_base_url") ?? ""
+            
+        case .claude:
+            return "https://api.anthropic.com"
+            
+        case .openai:
+            return "https://api.openai.com"
+        }
+    }
+    
+    private func getCurrentApiKey() -> String? {
+        let target = getCurrentTarget()
+        switch target {
+        case .claude:
+            return UserDefaults.standard.string(forKey: "claude_api_key")
+        case .openai:
+            return UserDefaults.standard.string(forKey: "openai_api_key")
+        default:
+            return nil
+        }
     }
     
     public func getAvailableModels() async -> [String] {
-        let endpoint = getModelsEndpoint()
+        let target = getCurrentTarget()
+        let endpoint = getModelsEndpoint(for: target)
+        let baseURLString = getCurrentBaseURL()
+        
+        // 빈 문자열이면 빈 배열 반환
+        guard !baseURLString.isEmpty, let baseURL = URL(string: baseURLString) else {
+            return []
+        }
+        
         let requestURL = baseURL.appendingPathComponent(endpoint)
         
         do {
@@ -122,7 +152,7 @@ public class LLMBridge: ObservableObject {
             request.timeoutInterval = 10.0  
             
             if target == .claude {
-                guard let key = apiKey else {
+                guard let key = getCurrentApiKey() else {
                     return []
                 }
                 request.addValue("\(key)", forHTTPHeaderField: "x-api-key")
@@ -131,7 +161,7 @@ public class LLMBridge: ObservableObject {
             }
             
             if target == .openai {
-                guard let key = apiKey else {
+                guard let key = getCurrentApiKey() else {
                     return []
                 }
                 request.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
@@ -192,21 +222,28 @@ public class LLMBridge: ObservableObject {
             defer { isLoading = false }
             
             do {
-                let endpoint = getChatEndpoint()
+                let endpoint = getChatEndpoint(for: getCurrentTarget())
+                let baseURLString = getCurrentBaseURL()
+                
+                // 빈 문자열이면 에러 발생
+                guard !baseURLString.isEmpty, let baseURL = URL(string: baseURLString) else {
+                    throw NSError(domain: "LLMBridgeError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid or empty base URL"])
+                }
+                
                 let requestURL = baseURL.appendingPathComponent(endpoint)
                 var request = URLRequest(url: requestURL)
                 request.httpMethod = "POST"
                 request.addValue("application/json", forHTTPHeaderField: "Content-Type")
                 
-                if target == .lmstudio {
+                if getCurrentTarget() == .lmstudio {
                     request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
                     request.addValue("keep-alive", forHTTPHeaderField: "Connection")
                 } else {
                     request.addValue("application/json", forHTTPHeaderField: "Accept")
                 }
                 
-                if target == .claude {
-                    guard let key = apiKey else {
+                if getCurrentTarget() == .claude {
+                    guard let key = getCurrentApiKey() else {
                         throw NSError(domain: "LLMBridgeError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Claude API key is required"])
                     }
                     request.addValue("\(key)", forHTTPHeaderField: "x-api-key")
@@ -214,8 +251,8 @@ public class LLMBridge: ObservableObject {
                     request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
                 }
                 
-                if target == .openai {
-                    guard let key = apiKey else {
+                if getCurrentTarget() == .openai {
+                    guard let key = getCurrentApiKey() else {
                         throw NSError(domain: "LLMBridgeError", code: 401, userInfo: [NSLocalizedDescriptionKey: "OpenAI API key is required"])
                     }
                     request.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
@@ -258,110 +295,7 @@ public class LLMBridge: ObservableObject {
         
         return aiMessage ?? Message(content: "Failed to generate response.", isUser: false, image: nil, timestamp: Date())
     }
-    
-    public func sendMessageStream(content: String, image: PlatformImage? = nil, model: String? = nil) -> AsyncThrowingStream<String, Error> {
-        return AsyncThrowingStream { continuation in
-            Task { @MainActor in
-                isLoading = true
-                errorMessage = nil
-                tempResponse = ""
-                currentResponse = ""
-                
-                let userMessage = Message(content: content, isUser: true, image: image)
-                messages.append(userMessage)
-                
-                generationTask?.cancel()
-                
-                let selectedModel = model ?? getDefaultModel
-                
-                generationTask = Task {
-                    defer { 
-                        Task { @MainActor in
-                            isLoading = false
-                        }
-                    }
-                    
-                    do {
-                        let endpoint = getChatEndpoint()
-                        let requestURL = baseURL.appendingPathComponent(endpoint)
-                        var request = URLRequest(url: requestURL)
-                        request.httpMethod = "POST"
-                        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-                        
-                        if target == .lmstudio {
-                            request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
-                            request.addValue("keep-alive", forHTTPHeaderField: "Connection")
-                        } else {
-                            request.addValue("application/json", forHTTPHeaderField: "Accept")
-                        }
-                        
-                        if target == .claude {
-                            guard let key = apiKey else {
-                                throw NSError(domain: "LLMBridgeError", code: 401, userInfo: [NSLocalizedDescriptionKey: "Claude API key is required"])
-                            }
-                            request.addValue("\(key)", forHTTPHeaderField: "x-api-key")
-                            request.addValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-                            request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
-                        }
-                        
-                        if target == .openai {
-                            guard let key = apiKey else {
-                                throw NSError(domain: "LLMBridgeError", code: 401, userInfo: [NSLocalizedDescriptionKey: "OpenAI API key is required"])
-                            }
-                            request.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-                            request.addValue("text/event-stream", forHTTPHeaderField: "Accept")
-                            request.addValue("keep-alive", forHTTPHeaderField: "Connection")
-                        }
-                        
-                        request.addValue("no-cache", forHTTPHeaderField: "Cache-Control")
-                        request.timeoutInterval = 300.0
-                        
-                        let requestData = try createChatRequest(content: content, model: selectedModel, image: image)
-                        request.httpBody = try JSONSerialization.data(withJSONObject: requestData)
-                                                
-                        try await self.processStreamWithContinuation(request: request, continuation: continuation)
-                        
-                        if !tempResponse.isEmpty {
-                            let message = Message(content: tempResponse, isUser: false, image: nil, timestamp: Date())
-                            await MainActor.run {
-                                messages.append(message)
-                            }
-                            
-                            tempResponse = ""
-                            currentResponse = ""
-                        }
-                        
-                        continuation.finish()
-                        
-                    } catch {
-                        await MainActor.run {
-                            errorMessage = error.localizedDescription
-                        }
-                        
-                        if !Task.isCancelled && !tempResponse.isEmpty {
-                            let message = Message(content: tempResponse + "\nAn error occurred.", isUser: false, image: nil, timestamp: Date())
-                            await MainActor.run {
-                                messages.append(message)
-                            }
-                            
-                            tempResponse = ""
-                            currentResponse = ""
-                        }
-                        
-                        continuation.finish(throwing: error)
-                    }
-                }
-            }
-            
-            continuation.onTermination = { @Sendable _ in
-                Task { @MainActor in
-                    self.generationTask?.cancel()
-                    self.isLoading = false
-                }
-            }
-        }
-    }
-    
+        
     public func cancelGeneration() {
         generationTask?.cancel()
         
@@ -381,7 +315,7 @@ public class LLMBridge: ObservableObject {
         currentResponse = ""
     }
     
-    private func getModelsEndpoint() -> String {
+    private func getModelsEndpoint(for target: LLMTarget) -> String {
         switch target {
         case .ollama:
             return "api/tags"
@@ -394,7 +328,7 @@ public class LLMBridge: ObservableObject {
         }
     }
     
-    private func getChatEndpoint() -> String {
+    private func getChatEndpoint(for target: LLMTarget) -> String {
         switch target {
         case .ollama:
             return "api/chat"
@@ -408,7 +342,7 @@ public class LLMBridge: ObservableObject {
     }
     
     private func createChatRequest(content: String, model: String, image: PlatformImage?) throws -> [String: Any] {
-        switch target {
+        switch getCurrentTarget() {
         case .ollama:
             return createOllamaChatRequest(content: content, model: model, image: image)
         case .lmstudio:
@@ -589,7 +523,7 @@ public class LLMBridge: ObservableObject {
     private func processStreamLine(_ line: String) async {
         var jsonLine = line
         
-        if target == .lmstudio {
+        if getCurrentTarget() == .lmstudio {
             
             if line.hasPrefix("data: ") {
                 jsonLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -603,7 +537,7 @@ public class LLMBridge: ObservableObject {
             }
         }
         
-        if target == .claude {
+        if getCurrentTarget() == .claude {
             if line.hasPrefix("data: ") {
                 jsonLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 if jsonLine == "[DONE]" || jsonLine.isEmpty {
@@ -616,7 +550,7 @@ public class LLMBridge: ObservableObject {
             }
         }
         
-        if target == .openai {
+        if getCurrentTarget() == .openai {
             if line.hasPrefix("data: ") {
                 jsonLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 if jsonLine == "[DONE]" || jsonLine.isEmpty {
@@ -635,7 +569,7 @@ public class LLMBridge: ObservableObject {
             return
         }
         
-        switch target {
+        switch getCurrentTarget() {
         case .ollama:
             await processOllamaStream(json)
         case .lmstudio:
@@ -743,7 +677,7 @@ public class LLMBridge: ObservableObject {
     private func processStreamLineWithContinuation(_ line: String, continuation: AsyncThrowingStream<String, Error>.Continuation) async {
         var jsonLine = line
         
-        if target == .lmstudio {
+        if getCurrentTarget() == .lmstudio {
             if line.hasPrefix("data: ") {
                 jsonLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 
@@ -757,7 +691,7 @@ public class LLMBridge: ObservableObject {
             }
         }
         
-        if target == .claude {
+        if getCurrentTarget() == .claude {
             if line.hasPrefix("data: ") {
                 jsonLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 
@@ -771,7 +705,7 @@ public class LLMBridge: ObservableObject {
             }
         }
         
-        if target == .openai {
+        if getCurrentTarget() == .openai {
             if line.hasPrefix("data: ") {
                 jsonLine = String(line.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
                 
@@ -791,7 +725,7 @@ public class LLMBridge: ObservableObject {
             return
         }
         
-        switch target {
+        switch getCurrentTarget() {
         case .ollama:
             await processOllamaStreamWithContinuation(json, continuation: continuation)
         case .lmstudio:
@@ -942,15 +876,31 @@ public class LLMBridge: ObservableObject {
     }
     #endif
     
-    public func getBaseURL() -> URL {
-        return baseURL
+    public func getBaseURL() -> String {
+        return getCurrentBaseURL()
     }
     
     public func getPort() -> Int {
-        return port
+        let baseURLString = getCurrentBaseURL()
+        
+        if let baseURL = URL(string: baseURLString), let port = baseURL.port {
+            return port
+        }
+        
+        // 기본 포트 반환
+        switch getCurrentTarget() {
+        case .ollama:
+            return 11434
+        case .lmstudio:
+            return 1234
+        case .claude:
+            return 443
+        case .openai:
+            return 443
+        }
     }
     
     public func getTarget() -> LLMTarget {
-        return target
+        return getCurrentTarget()
     }
 }

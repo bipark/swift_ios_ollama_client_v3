@@ -64,10 +64,7 @@ struct ContentView: View {
                     ChatView()
                 } else if destination.hasPrefix("Old") {
                     let conversationId = String(destination.dropFirst(3))
-                    let conversation = conversations.first { $0.id == conversationId }
-                    let baseUrl = conversation?.baseUrl != nil ? URL(string: conversation!.baseUrl!) : nil
-                    
-                    ChatView(conversationId: conversationId, baseUrl: baseUrl)
+                    ChatView(conversationId: conversationId)
                 } else if destination == "Settings" {
                     SettingsView()
                 }

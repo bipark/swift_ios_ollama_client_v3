@@ -76,7 +76,7 @@ struct SettingsView: View {
         let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
         let port = url.port ?? 11434
         
-        _llmBridge = StateObject(wrappedValue: LLMBridge(baseURL: baseURLString, port: port, target: .ollama))
+        _llmBridge = StateObject(wrappedValue: LLMBridge())
     }
     
     var body: some View {
@@ -393,8 +393,12 @@ struct SettingsView: View {
                     do {
                         let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
                         let port = url.port ?? 11434
-                        let testBridge = LLMBridge(baseURL: baseURLString, port: port, target: .ollama)
                         
+                        // 임시로 UserDefaults에 설정을 저장하고 모델을 가져옴
+                        UserDefaults.standard.set(baseURL, forKey: "ollama_base_url")
+                        UserDefaults.standard.set("ollama", forKey: "last_used_llm")
+                        
+                        let testBridge = LLMBridge()
                         let models = await testBridge.getAvailableModels()
                         
                         await MainActor.run {
@@ -447,9 +451,25 @@ struct SettingsView: View {
             do {
                 let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
                 let port = url.port ?? 11434
-                let testBridge = LLMBridge(baseURL: baseURLString, port: port, target: .ollama)
                 
+                // 기존 설정을 백업
+                let originalOllamaURL = UserDefaults.standard.string(forKey: "ollama_base_url")
+                let originalLLM = UserDefaults.standard.string(forKey: "last_used_llm")
+                
+                // 임시로 연결 테스트를 위한 설정
+                UserDefaults.standard.set(baseURL, forKey: "ollama_base_url")
+                UserDefaults.standard.set("ollama", forKey: "last_used_llm")
+                
+                let testBridge = LLMBridge()
                 let models = await testBridge.getAvailableModels()
+                
+                // 원래 설정 복원
+                if let originalURL = originalOllamaURL {
+                    UserDefaults.standard.set(originalURL, forKey: "ollama_base_url")
+                }
+                if let originalTarget = originalLLM {
+                    UserDefaults.standard.set(originalTarget, forKey: "last_used_llm")
+                }
                 
                 await MainActor.run {
                     isCheckingConnection = false
@@ -482,9 +502,25 @@ struct SettingsView: View {
             do {
                 let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
                 let port = url.port ?? 1234
-                let testBridge = LLMBridge(baseURL: baseURLString, port: port, target: .lmstudio)
                 
+                // 기존 설정을 백업
+                let originalLMStudioURL = UserDefaults.standard.string(forKey: "lmstudio_base_url")
+                let originalLLM = UserDefaults.standard.string(forKey: "last_used_llm")
+                
+                // 임시로 연결 테스트를 위한 설정
+                UserDefaults.standard.set(baseURL, forKey: "lmstudio_base_url")
+                UserDefaults.standard.set("lmstudio", forKey: "last_used_llm")
+                
+                let testBridge = LLMBridge()
                 let models = await testBridge.getAvailableModels()
+                
+                // 원래 설정 복원
+                if let originalURL = originalLMStudioURL {
+                    UserDefaults.standard.set(originalURL, forKey: "lmstudio_base_url")
+                }
+                if let originalTarget = originalLLM {
+                    UserDefaults.standard.set(originalTarget, forKey: "last_used_llm")
+                }
                 
                 await MainActor.run {
                     isCheckingLMStudioConnection = false
@@ -586,8 +622,4 @@ struct LLMRowView: View {
             return .green
         }
     }
-}
-
-#Preview {
-    SettingsView()
 }

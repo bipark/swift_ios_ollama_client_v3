@@ -93,7 +93,7 @@
 "l_thinking" = "생각 중...";
 "l_cancel_generation" = "취소";
 "l_error_prefix" = "오류: %@";
-"l_loading_models" = "서버에서 모델 목록 로드 중...";
+"l_loading_models" = "모델 목록 로드 중...";
 "l_model_load_failed" = "모델 목록 로드 실패";
 "l_check_server_and_retry" = "서버 연결을 확인하고 다시 시도해주세요";
 "l_retry" = "다시 시도";

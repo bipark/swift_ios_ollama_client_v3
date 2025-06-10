@@ -37,28 +37,21 @@ struct ChatView: View {
     @State private var showShareAllSheet = false
     @StateObject private var settings = SettingsManager()
     @State private var selectedLLM: LLMTarget = .ollama
-    private var llmBridgeForInput: LLMBridge
+    @State private var llmBridgeForInput: LLMBridge
     
     // Database and conversation management
     private let databaseService = DatabaseService()
     private let conversationId: String
-    private var baseURL: URL
     
     private let selectedModelKey = "selected_model"
     private let defaultModel = "llama"
     
-    init(conversationId: String? = nil, baseUrl: URL? = nil) {
-        let defaultURLString = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
-        let url = baseUrl ?? URL(string: defaultURLString)!
-        
-        let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
-        let port = url.port ?? 11434
-        
-        _llmBridge = StateObject(wrappedValue: LLMBridge(baseURL: baseURLString, port: port, target: .ollama))
-        self.llmBridgeForInput = LLMBridge(baseURL: baseURLString, port: port, target: .ollama)
+    init(conversationId: String? = nil) {
+        let initialBridge = LLMBridge()
+        _llmBridge = StateObject(wrappedValue: initialBridge)
+        _llmBridgeForInput = State(initialValue: LLMBridge())
         
         self.conversationId = conversationId ?? UUID().uuidString
-        self.baseURL = url
         _isNewConversation = State(initialValue: conversationId == nil)
         
         if let modelName = UserDefaults.standard.string(forKey: selectedModelKey) {
@@ -70,158 +63,118 @@ struct ChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            if isModelLoading {
-                HStack {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .scaleEffect(0.8)
-                    Text("l_loading_models".localized)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                .padding()
-                .dismissKeyboardOnTap(focusState: $isInputFocused)
-                Spacer()
-            } else if isModelLoadingFailed {
-                VStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.largeTitle)
-                        .foregroundColor(.orange)
-                        .padding(.bottom, 4)
-                    
-                    Text("l_models_load_failed".localized)
-                        .font(.headline)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("l_check_server_and_retry".localized)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                    
-                    Button("l_retry".localized) {
-                        isModelLoading = true
-                        isModelLoadingFailed = false
-                        loadAvailableModels()
-                    }
-                    .padding(.top, 8)
-                    .buttonStyle(.bordered)
-                    Spacer()
-                }
-                .padding()
-                .dismissKeyboardOnTap(focusState: $isInputFocused)
-            } else {
-                // Messages list
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(llmBridge.messages) { message in
-                                MessageBubble(
-                                    message: message,
-                                    allMessages: llmBridge.messages,
-                                    onDelete: {
-                                        messageToDelete = message.id
-                                        showDeleteConfirmation = true
-                                    }
-                                )
-                                .dismissKeyboardOnTap(focusState: $isInputFocused)
-                            }
-                            
-                            if !llmBridge.currentResponse.isEmpty {
-                                HStack {
-                                    Markdown(llmBridge.currentResponse)
-                                        .padding(12)
-                                        .background(Color(.systemGray5))
-                                        .foregroundColor(.primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    
-                                    Spacer()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(llmBridge.messages) { message in
+                            MessageBubble(
+                                message: message,
+                                allMessages: llmBridge.messages,
+                                onDelete: {
+                                    messageToDelete = message.id
+                                    showDeleteConfirmation = true
                                 }
-                                .id("currentResponse")
-                                .transition(.opacity)
-                                .dismissKeyboardOnTap(focusState: $isInputFocused)
-                            }
-                            
-                            if llmBridge.isLoading && llmBridge.currentResponse.isEmpty {
-                                HStack {
-                                    Text("l_thinking".localized)
-                                        .padding(12)
-                                        .background(Color(.systemGray5))
-                                        .foregroundColor(.primary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    
-                                    Spacer()
-                                    
-                                    Button {
-                                        llmBridge.cancelGeneration()
-                                    } label: {
-                                        Text("l_cancel_generation".localized)
-                                            .padding(8)
-                                            .background(Color.red.opacity(0.1))
-                                            .foregroundColor(Color.red)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                                .dismissKeyboardOnTap(focusState: $isInputFocused)
-                            }
-                            
-                            if let error = llmBridge.errorMessage {
-                                HStack {
-                                    Text(String(format: "l_error_prefix".localized, error))
-                                        .padding(12)
-                                        .background(Color.red.opacity(0.1))
-                                        .foregroundColor(.red)
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    
-                                    Spacer()
-                                }
-                                .padding(.vertical, 4)
-                                .dismissKeyboardOnTap(focusState: $isInputFocused)
-                            }
+                            )
+                            .dismissKeyboardOnTap(focusState: $isInputFocused)
                         }
-                        .padding()
-                        .onChange(of: llmBridge.messages.count) { _ in
-                            if let lastMessage = llmBridge.messages.last {
-                                withAnimation {
-                                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                                }
-                            }
-                        }
-                        .onChange(of: llmBridge.currentResponse) { _ in
-                            if !llmBridge.currentResponse.isEmpty {
-                                withAnimation {
-                                    proxy.scrollTo("currentResponse", anchor: .bottom)
-                                }
-                            }
-                        }
-                    }
-                    .scrollDismissesKeyboard(.interactively)
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(TapGesture().onEnded {
-                        hideKeyboard()
-                        isInputFocused = false
-                    })
-                    .safeAreaInset(edge: .bottom) {
-                        if !isModelLoading && !isModelLoadingFailed {
-                            VStack(spacing: 0) {
-                                Divider()
+                        
+                        if !llmBridge.currentResponse.isEmpty {
+                            HStack {
+                                Markdown(llmBridge.currentResponse)
+                                    .padding(12)
+                                    .background(Color(.systemGray5))
+                                    .foregroundColor(.primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
                                 
-                                MessageInputView(
-                                    text: $newMessage,
-                                    isLoading: llmBridge.isLoading,
-                                    shouldFocus: isNewConversation,
-                                    onSend: sendMessage,
-                                    selectedImage: $selectedImage,
-                                    selectedPDFText: $selectedPDFText,
-                                    selectedTXTText: $selectedTXTText,
-                                    isInputFocused: $isInputFocused,
-                                    selectedLLM: $selectedLLM,
-                                    selectedModel: $selectedModel,
-                                    enabledLLMs: settings.getEnabledLLMs(),
-                                    llmBridge: llmBridgeForInput
-                                )
-                                .background(Color(.systemBackground))
+                                Spacer()
                             }
+                            .id("currentResponse")
+                            .transition(.opacity)
+                            .dismissKeyboardOnTap(focusState: $isInputFocused)
+                        }
+                        
+                        if llmBridge.isLoading && llmBridge.currentResponse.isEmpty {
+                            HStack {
+                                Text("l_thinking".localized)
+                                    .padding(12)
+                                    .background(Color(.systemGray5))
+                                    .foregroundColor(.primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                
+                                Spacer()
+                                
+                                Button {
+                                    llmBridge.cancelGeneration()
+                                } label: {
+                                    Text("l_cancel_generation".localized)
+                                        .padding(8)
+                                        .background(Color.red.opacity(0.1))
+                                        .foregroundColor(Color.red)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                }
+                            }
+                            .padding(.vertical, 4)
+                            .dismissKeyboardOnTap(focusState: $isInputFocused)
+                        }
+                        
+                        if let error = llmBridge.errorMessage {
+                            HStack {
+                                Text(String(format: "l_error_prefix".localized, error))
+                                    .padding(12)
+                                    .background(Color.red.opacity(0.1))
+                                    .foregroundColor(.red)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                            .dismissKeyboardOnTap(focusState: $isInputFocused)
+                        }
+                    }
+                    .padding()
+                    .onChange(of: llmBridge.messages.count) { _ in
+                        if let lastMessage = llmBridge.messages.last {
+                            withAnimation {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: llmBridge.currentResponse) { _ in
+                        if !llmBridge.currentResponse.isEmpty {
+                            withAnimation {
+                                proxy.scrollTo("currentResponse", anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    hideKeyboard()
+                    isInputFocused = false
+                })
+                .safeAreaInset(edge: .bottom) {
+                    if !isModelLoading && !isModelLoadingFailed {
+                        VStack(spacing: 0) {
+                            Divider()
+                            
+                            MessageInputView(
+                                text: $newMessage,
+                                isLoading: llmBridge.isLoading,
+                                shouldFocus: isNewConversation,
+                                onSend: sendMessage,
+                                selectedImage: $selectedImage,
+                                selectedPDFText: $selectedPDFText,
+                                selectedTXTText: $selectedTXTText,
+                                isInputFocused: $isInputFocused,
+                                selectedLLM: $selectedLLM,
+                                selectedModel: $selectedModel,
+                                enabledLLMs: settings.getEnabledLLMs(),
+                                llmBridge: llmBridgeForInput,
+                                onLLMChanged: handleLLMChanged
+                            )
+                            .environmentObject(settings)
+                            .background(Color(.systemBackground))
                         }
                     }
                 }
@@ -551,11 +504,7 @@ struct ChatView: View {
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .short
         let dateString = dateFormatter.string(from: Date())
-        
-        formattedText += "\n\n\(String(format: "l_generated_time".localized, dateString))\n"
-        formattedText += "\(String(format: "l_model".localized, selectedModel))\n"
-        formattedText += "\(String(format: "l_server".localized, getBaseURL().absoluteString))"
-        
+                
         return formattedText
     }
     
@@ -607,7 +556,7 @@ struct ChatView: View {
                 answer: answer,
                 image: imageBase64,
                 engine: engine,
-                baseUrl: baseURL.absoluteString
+                baseUrl: ""
             )
         } catch {
             print("Failed to save to database: \(error)")
@@ -710,8 +659,12 @@ struct ChatView: View {
         return resizedImage
     }
     
-    private func getBaseURL() -> URL {
-        return baseURL
+    private func createLLMBridge(for target: LLMTarget) -> LLMBridge {
+        return LLMBridge()
+    }
+    
+    private func handleLLMChanged(_ newLLM: LLMTarget) {
+        llmBridgeForInput = createLLMBridge(for: newLLM)
     }
 }
 

@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import Toasts
+
 
 // MARK: - LLMTarget Extensions
 extension LLMTarget: Codable, CaseIterable {

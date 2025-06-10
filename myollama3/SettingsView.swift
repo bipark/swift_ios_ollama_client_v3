@@ -10,14 +10,15 @@ import Toasts
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentToast) var presentToast
     @StateObject private var settings = SettingsManager()
     
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isCheckingConnection = false
     @State private var isCheckingLMStudioConnection = false
-    @State private var connectionStatus: ConnectionStatus = .unknown
-    @State private var lmStudioConnectionStatus: ConnectionStatus = .unknown
+//    @State private var connectionStatus: ConnectionStatus = .unknown
+//    @State private var lmStudioConnectionStatus: ConnectionStatus = .unknown
     @State private var isSaving = false
     @State private var showConfirmationAlert = false
     @State private var showDeleteConfirmation = false
@@ -25,59 +26,58 @@ struct SettingsView: View {
     
     @State private var appVersion = ""
     @State private var buildNumber = ""
-    @StateObject private var llmBridge: LLMBridge
 
     private let databaseService = DatabaseService()
     
-    enum ConnectionStatus: Equatable {
-        case unknown
-        case success
-        case failed(String)
-        
-        static func == (lhs: ConnectionStatus, rhs: ConnectionStatus) -> Bool {
-            switch (lhs, rhs) {
-            case (.unknown, .unknown):
-                return true
-            case (.success, .success):
-                return true
-            case (.failed, .failed):
-                return true
-            default:
-                return false
-            }
-        }
-        
-        var message: String {
-            switch self {
-            case .unknown:
-                return ""
-            case .success:
-                return "l_connected_to_server".localized
-            case .failed(let error):
-                return String(format: "l_connection_error".localized, error)
-            }
-        }
-        
-        var color: Color {
-            switch self {
-            case .unknown:
-                return .clear
-            case .success:
-                return Color.appPrimary.opacity(0.7)
-            case .failed:
-                return .red
-            }
-        }
+//    enum ConnectionStatus: Equatable {
+//        case unknown
+//        case success
+//        case failed(String)
+//        
+//        static func == (lhs: ConnectionStatus, rhs: ConnectionStatus) -> Bool {
+//            switch (lhs, rhs) {
+//            case (.unknown, .unknown):
+//                return true
+//            case (.success, .success):
+//                return true
+//            case (.failed, .failed):
+//                return true
+//            default:
+//                return false
+//            }
+//        }
+//        
+//        var message: String {
+//            switch self {
+//            case .unknown:
+//                return ""
+//            case .success:
+//                return "l_connected_to_server".localized
+//            case .failed(let error):
+//                return String(format: "l_connection_error".localized, error)
+//            }
+//        }
+//        
+//        var color: Color {
+//            switch self {
+//            case .unknown:
+//                return .clear
+//            case .success:
+//                return Color.appPrimary.opacity(0.7)
+//            case .failed:
+//                return .red
+//            }
+//        }
+//    }
+//    
+    private func showToast(_ message: String) {
+        presentToast(
+            ToastValue(
+                icon: Image(systemName: "info.circle"), message: message
+            )
+        )
     }
     
-    init() {
-        let urlString = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
-        let url = URL(string: urlString)!
-        let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
-        let port = url.port ?? 11434
-        
-        _llmBridge = StateObject(wrappedValue: LLMBridge())
-    }
     
     var body: some View {
         Form {
@@ -97,8 +97,9 @@ struct SettingsView: View {
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .keyboardType(.URL)
-                    
-                    Button(action: checkServerConnection) {
+                        .background(content: { RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.2)) })
+
+                    Button(action: checkOllamaConnection) {
                         HStack {
                             Text("l_check_server_connection".localized)
                                 .foregroundColor(AppColor.link)
@@ -110,13 +111,6 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(isCheckingConnection)
-                    
-                    if connectionStatus != .unknown {
-                        Text(connectionStatus.message)
-                            .font(.footnote)
-                            .foregroundColor(connectionStatus.color)
-                            .padding(.top, 4)
-                    }
                 }
 
                 // LMStudio Server
@@ -133,7 +127,8 @@ struct SettingsView: View {
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
                     .keyboardType(.URL)
-                    
+                    .background(content: { RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.2)) })
+
                 Button(action: checkLMStudioConnection) {
                     HStack {
                         Text("l_check_server_connection".localized)
@@ -147,12 +142,12 @@ struct SettingsView: View {
                 }
                 .disabled(isCheckingLMStudioConnection)
                 
-                if lmStudioConnectionStatus != .unknown {
-                    Text(lmStudioConnectionStatus.message)
-                        .font(.footnote)
-                        .foregroundColor(lmStudioConnectionStatus.color)
-                        .padding(.top, 4)
-                }
+//                if lmStudioConnectionStatus != .unknown {
+//                    Text(lmStudioConnectionStatus.message)
+//                        .font(.footnote)
+//                        .foregroundColor(lmStudioConnectionStatus.color)
+//                        .padding(.top, 4)
+//                }
             }
 
             // Claude API Section
@@ -169,6 +164,7 @@ struct SettingsView: View {
                 ))
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
+                    .background(content: { RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.2)) })
 
             }
 
@@ -186,6 +182,7 @@ struct SettingsView: View {
                 ))
                     .autocorrectionDisabled()
                     .autocapitalization(.none)
+                    .background(content: { RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.2)) })
             }
             
             Section(header: Text("l_llm_instructions".localized), footer: Text("l_llm_instructions_desc".localized)) {
@@ -235,8 +232,8 @@ struct SettingsView: View {
             
             Section (header: Text("l_reset".localized), footer: Text("l_reset_llm_desc".localized)) {
                 Button("l_reset_llm_settings".localized) {
-                    UserDefaults.standard.set("http://192.168.0.1:11434", forKey: "ollama_base_url")
-                    UserDefaults.standard.set("http://192.168.0.1:1234", forKey: "lmstudio_base_url")
+                    UserDefaults.standard.set("", forKey: "ollama_base_url")
+                    UserDefaults.standard.set("", forKey: "lmstudio_base_url")
                     UserDefaults.standard.set("", forKey: "claude_api_key")
                     UserDefaults.standard.set("", forKey: "openai_api_key")
                     UserDefaults.standard.set("l_default_instruction".localized, forKey: "instruction")
@@ -381,7 +378,7 @@ struct SettingsView: View {
     }
     
     private func saveSettings() {
-        let baseURL = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
+        let baseURL = UserDefaults.standard.string(forKey: "ollama_base_url") ?? ""
         
         if let url = URL(string: baseURL) {
             let oldURLString = UserDefaults.standard.string(forKey: "ollama_base_url")
@@ -394,7 +391,6 @@ struct SettingsView: View {
                         let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
                         let port = url.port ?? 11434
                         
-                        // 임시로 UserDefaults에 설정을 저장하고 모델을 가져옴
                         UserDefaults.standard.set(baseURL, forKey: "ollama_base_url")
                         UserDefaults.standard.set("ollama", forKey: "last_used_llm")
                         
@@ -418,124 +414,84 @@ struct SettingsView: View {
                             }
                         }
                     } catch {
-                        await MainActor.run {
-                            isSaving = false
-                            
-                            alertMessage = String(format: "l_connection_error".localized, error.localizedDescription)
-                            
-                            showConfirmationAlert = true
-                        }
+                        isSaving = false
+                        alertMessage = String(format: "l_connection_error".localized, error.localizedDescription)
+                        showToast(alertMessage)
                     }
                 }
             } else {
                 alertMessage = "l_server_check_complete".localized
-                showAlert = true
+                showToast(alertMessage)
             }
         } else {
             alertMessage = "l_url_format_invalid".localized
-            showAlert = true
+            showToast(alertMessage)
         }
     }
     
-    private func checkServerConnection() {
-        let baseURL = UserDefaults.standard.string(forKey: "ollama_base_url") ?? "http://192.168.0.1:11434"
+    private func checkOllamaConnection() {
+        let baseURL = UserDefaults.standard.string(forKey: "ollama_base_url") ?? ""
         guard let url = URL(string: baseURL) else {
-            connectionStatus = .failed("l_connection_error".localized)
+            showToast("l_connection_error".localized)
             return
         }
         
         isCheckingConnection = true
-        connectionStatus = .unknown
-        
         Task {
-            do {
-                let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
-                let port = url.port ?? 11434
-                
-                // 기존 설정을 백업
-                let originalOllamaURL = UserDefaults.standard.string(forKey: "ollama_base_url")
-                let originalLLM = UserDefaults.standard.string(forKey: "last_used_llm")
-                
-                // 임시로 연결 테스트를 위한 설정
-                UserDefaults.standard.set(baseURL, forKey: "ollama_base_url")
-                UserDefaults.standard.set("ollama", forKey: "last_used_llm")
-                
-                let testBridge = LLMBridge()
-                let models = await testBridge.getAvailableModels()
-                
-                // 원래 설정 복원
-                if let originalURL = originalOllamaURL {
-                    UserDefaults.standard.set(originalURL, forKey: "ollama_base_url")
-                }
-                if let originalTarget = originalLLM {
-                    UserDefaults.standard.set(originalTarget, forKey: "last_used_llm")
-                }
-                
-                await MainActor.run {
-                    isCheckingConnection = false
-                    if !models.isEmpty {
-                        connectionStatus = .success
-                    } else {
-                        connectionStatus = .failed("No models found")
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    isCheckingConnection = false
-                    connectionStatus = .failed(error.localizedDescription)
-                }
+            let originalOllamaURL = UserDefaults.standard.string(forKey: "ollama_base_url")
+            let originalLLM = UserDefaults.standard.string(forKey: "last_used_llm")
+            
+            UserDefaults.standard.set(baseURL, forKey: "ollama_base_url")
+            UserDefaults.standard.set("ollama", forKey: "last_used_llm")
+            
+            let testBridge = LLMBridge()
+            let models = await testBridge.getAvailableModels()
+            if models.isEmpty {
+                showToast("l_connection_error".localized)
+            } else {
+                showToast("l_connected_to_server".localized)
             }
+            
+            if let originalURL = originalOllamaURL {
+                UserDefaults.standard.set(originalURL, forKey: "ollama_base_url")
+            }
+            if let originalTarget = originalLLM {
+                UserDefaults.standard.set(originalTarget, forKey: "last_used_llm")
+            }
+            isCheckingConnection = false
         }
     }
     
     private func checkLMStudioConnection() {
-        let baseURL = UserDefaults.standard.string(forKey: "lmstudio_base_url") ?? "http://192.168.0.1:1234"
+        let baseURL = UserDefaults.standard.string(forKey: "lmstudio_base_url") ?? ""
         guard let url = URL(string: baseURL) else {
-            lmStudioConnectionStatus = .failed("l_connection_error".localized)
+            showToast("l_connection_error".localized)
             return
         }
         
         isCheckingLMStudioConnection = true
-        lmStudioConnectionStatus = .unknown
-        
         Task {
-            do {
-                let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
-                let port = url.port ?? 1234
-                
-                // 기존 설정을 백업
-                let originalLMStudioURL = UserDefaults.standard.string(forKey: "lmstudio_base_url")
-                let originalLLM = UserDefaults.standard.string(forKey: "last_used_llm")
-                
-                // 임시로 연결 테스트를 위한 설정
-                UserDefaults.standard.set(baseURL, forKey: "lmstudio_base_url")
-                UserDefaults.standard.set("lmstudio", forKey: "last_used_llm")
-                
-                let testBridge = LLMBridge()
-                let models = await testBridge.getAvailableModels()
-                
-                // 원래 설정 복원
-                if let originalURL = originalLMStudioURL {
-                    UserDefaults.standard.set(originalURL, forKey: "lmstudio_base_url")
-                }
-                if let originalTarget = originalLLM {
-                    UserDefaults.standard.set(originalTarget, forKey: "last_used_llm")
-                }
-                
-                await MainActor.run {
-                    isCheckingLMStudioConnection = false
-                    if !models.isEmpty {
-                        lmStudioConnectionStatus = .success
-                    } else {
-                        lmStudioConnectionStatus = .failed("No models found")
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    isCheckingLMStudioConnection = false
-                    lmStudioConnectionStatus = .failed(error.localizedDescription)
-                }
+            let originalLMStudioURL = UserDefaults.standard.string(forKey: "lmstudio_base_url")
+            let originalLLM = UserDefaults.standard.string(forKey: "last_used_llm")
+            
+            UserDefaults.standard.set(baseURL, forKey: "lmstudio_base_url")
+            UserDefaults.standard.set("lmstudio", forKey: "last_used_llm")
+            
+            let testBridge = LLMBridge()
+            let models = await testBridge.getAvailableModels()
+            if models.isEmpty {
+                showToast("l_connection_error".localized)
+            } else {
+                showToast("l_connected_to_server".localized)
             }
+            
+            if let originalURL = originalLMStudioURL {
+                UserDefaults.standard.set(originalURL, forKey: "lmstudio_base_url")
+            }
+            if let originalTarget = originalLLM {
+                UserDefaults.standard.set(originalTarget, forKey: "last_used_llm")
+            }
+            isCheckingLMStudioConnection = false
         }
     }
     

@@ -404,7 +404,3 @@ struct ConversationItemView: View {
             }
     }
 }
-
-#Preview {
-    ContentView()
-}

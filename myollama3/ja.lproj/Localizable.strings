@@ -17,7 +17,7 @@
 "l_ollama_server_settings" = "Ollamaサーバー設定";
 "l_check_server_connection" = "サーバー接続を確認";
 "l_connected_to_server" = "サーバーに接続しました";
-"l_connection_error" = "接続エラー: %@";
+"l_connection_error" = "接続エラー";
 "l_llm_instructions" = "LLM指示";
 "l_llm_instructions_desc" = "AIモデルの基本的な行動方針を指示する内容です。";
 "l_temperature" = "Temperature";

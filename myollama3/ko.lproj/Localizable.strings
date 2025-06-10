@@ -17,7 +17,7 @@
 "l_ollama_server_settings" = "Ollama 서버 설정";
 "l_check_server_connection" = "서버연결 상태 확인";
 "l_connected_to_server" = "서버에 연결되었습니다";
-"l_connection_error" = "서버 연결중에 오류가 발생했습니다: %@";
+"l_connection_error" = "서버 연결중에 오류가 발생했습니다";
 "l_llm_instructions" = "LLM 지시사항";
 "l_llm_instructions_desc" = "AI 모델에게 기본적인 행동 방식을 지시하는 내용입니다.";
 "l_temperature" = "Temperature";

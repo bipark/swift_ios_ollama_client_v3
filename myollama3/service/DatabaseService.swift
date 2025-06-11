@@ -169,11 +169,7 @@ class DatabaseService: ObservableObject {
                 }
                 
                 results.append((question: question, answer: answer, created: created, engine: engine, baseUrl: baseUrl, image: imageBase64))
-            }
-            
-            if results.isEmpty {
-                throw DatabaseError.dataNotFound
-            }
+            }            
         } else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
             throw DatabaseError.queryFailed(errorMessage)

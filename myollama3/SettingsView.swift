@@ -14,11 +14,9 @@ struct SettingsView: View {
     @StateObject private var settings = SettingsManager()
     
     @State private var showAlert = false
-    @State private var alertMessage = ""
+//    @State private var alertMessage = ""
     @State private var isCheckingConnection = false
     @State private var isCheckingLMStudioConnection = false
-//    @State private var connectionStatus: ConnectionStatus = .unknown
-//    @State private var lmStudioConnectionStatus: ConnectionStatus = .unknown
     @State private var isSaving = false
     @State private var showConfirmationAlert = false
     @State private var showDeleteConfirmation = false
@@ -29,47 +27,6 @@ struct SettingsView: View {
 
     private let databaseService = DatabaseService()
     
-//    enum ConnectionStatus: Equatable {
-//        case unknown
-//        case success
-//        case failed(String)
-//        
-//        static func == (lhs: ConnectionStatus, rhs: ConnectionStatus) -> Bool {
-//            switch (lhs, rhs) {
-//            case (.unknown, .unknown):
-//                return true
-//            case (.success, .success):
-//                return true
-//            case (.failed, .failed):
-//                return true
-//            default:
-//                return false
-//            }
-//        }
-//        
-//        var message: String {
-//            switch self {
-//            case .unknown:
-//                return ""
-//            case .success:
-//                return "l_connected_to_server".localized
-//            case .failed(let error):
-//                return String(format: "l_connection_error".localized, error)
-//            }
-//        }
-//        
-//        var color: Color {
-//            switch self {
-//            case .unknown:
-//                return .clear
-//            case .success:
-//                return Color.appPrimary.opacity(0.7)
-//            case .failed:
-//                return .red
-//            }
-//        }
-//    }
-//    
     private func showToast(_ message: String) {
         presentToast(
             ToastValue(
@@ -77,7 +34,6 @@ struct SettingsView: View {
             )
         )
     }
-    
     
     var body: some View {
         Form {
@@ -141,13 +97,6 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(isCheckingLMStudioConnection)
-                
-//                if lmStudioConnectionStatus != .unknown {
-//                    Text(lmStudioConnectionStatus.message)
-//                        .font(.footnote)
-//                        .foregroundColor(lmStudioConnectionStatus.color)
-//                        .padding(.top, 4)
-//                }
             }
 
             // Claude API Section
@@ -334,13 +283,13 @@ struct SettingsView: View {
                     .shadow(radius: 4)
             }
         }
-        .alert(alertMessage, isPresented: $showAlert) {
-            Button("l_ok".localized, role: .cancel) {
-                if alertMessage == "l_server_check_complete".localized {
-                    dismiss()
-                }
-            }
-        }
+//        .alert(alertMessage, isPresented: $showAlert) {
+//            Button("l_ok".localized, role: .cancel) {
+//                if alertMessage == "l_server_check_complete".localized {
+//                    dismiss()
+//                }
+//            }
+//        }
         .alert("l_server_connection_failed".localized, isPresented: $showConfirmationAlert) {
             Button("l_cancel".localized, role: .cancel) {}
             Button("l_save_anyway".localized, role: .destructive) {
@@ -388,9 +337,6 @@ struct SettingsView: View {
                 
                 Task {
                     do {
-                        let baseURLString = url.scheme! + "://" + (url.host ?? "localhost")
-                        let port = url.port ?? 11434
-                        
                         UserDefaults.standard.set(baseURL, forKey: "ollama_base_url")
                         UserDefaults.standard.set("ollama", forKey: "last_used_llm")
                         
@@ -407,25 +353,21 @@ struct SettingsView: View {
                                     userInfo: ["url": baseURL]
                                 )
                                 
-                                alertMessage = "l_server_check_complete".localized
-                                showAlert = true
+                                showToast("l_server_check_complete".localized)
                             } else {
                                 showConfirmationAlert = true
                             }
                         }
                     } catch {
                         isSaving = false
-                        alertMessage = String(format: "l_connection_error".localized, error.localizedDescription)
-                        showToast(alertMessage)
+                        showToast(String(format: "l_connection_error".localized, error.localizedDescription))
                     }
                 }
             } else {
-                alertMessage = "l_server_check_complete".localized
-                showToast(alertMessage)
+                showToast("l_server_check_complete".localized)
             }
         } else {
-            alertMessage = "l_url_format_invalid".localized
-            showToast(alertMessage)
+            showToast("l_url_format_invalid".localized)
         }
     }
     
@@ -504,8 +446,7 @@ struct SettingsView: View {
                 
                 await MainActor.run {
                     isDeletingData = false
-                    alertMessage = "l_all_data_deleted".localized
-                    showAlert = true
+                    showToast("l_all_data_deleted".localized)
                     
                     NotificationCenter.default.post(
                         name: Notification.Name("ConversationDataChanged"),
@@ -515,8 +456,7 @@ struct SettingsView: View {
             } catch {
                 await MainActor.run {
                     isDeletingData = false
-                    alertMessage = String(format: "l_data_deletion_failed".localized, error.localizedDescription)
-                    showAlert = true
+                    showToast(String(format: "l_data_deletion_failed".localized, error.localizedDescription))
                 }
             }
         }

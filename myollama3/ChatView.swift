@@ -16,6 +16,7 @@ import Combine
 typealias Message = LLMBridge.Message
 
 struct ChatView: View {
+    @Environment(\.presentToast) var presentToast
     @StateObject private var llmBridge: LLMBridge
     
     @State private var newMessage = ""
@@ -28,9 +29,6 @@ struct ChatView: View {
     @State private var isNewConversation: Bool
     @State private var showDeleteConfirmation = false
     @State private var messageToDelete: UUID?
-    @State private var isModelLoadingFailed = false
-    @State private var isModelLoading = true
-    @Environment(\.presentToast) var presentToast
     @State private var selectedImage: UIImage? = nil
     @State private var selectedPDFText: String? = nil
     @State private var selectedTXTText: String? = nil
@@ -38,6 +36,7 @@ struct ChatView: View {
     @StateObject private var settings = SettingsManager()
     @State private var selectedLLM: LLMTarget = .ollama
     @State private var llmBridgeForInput: LLMBridge
+    @State private var navTitle: String = ""
     
     // Database and conversation management
     private let databaseService = DatabaseService()
@@ -60,6 +59,15 @@ struct ChatView: View {
             _selectedModel = State(initialValue: defaultModel)
         }
     }
+    
+    private func showToast(_ message: String) {
+        presentToast(
+            ToastValue(
+                icon: Image(systemName: "info.circle"), message: message
+            )
+        )
+    }
+
     
     var body: some View {
         VStack(spacing: 0) {
@@ -154,28 +162,26 @@ struct ChatView: View {
                     isInputFocused = false
                 })
                 .safeAreaInset(edge: .bottom) {
-                    if !isModelLoading && !isModelLoadingFailed {
-                        VStack(spacing: 0) {
-                            Divider()
-                            
-                            MessageInputView(
-                                text: $newMessage,
-                                isLoading: llmBridge.isLoading,
-                                shouldFocus: isNewConversation,
-                                onSend: sendMessage,
-                                selectedImage: $selectedImage,
-                                selectedPDFText: $selectedPDFText,
-                                selectedTXTText: $selectedTXTText,
-                                isInputFocused: $isInputFocused,
-                                selectedLLM: $selectedLLM,
-                                selectedModel: $selectedModel,
-                                enabledLLMs: settings.getEnabledLLMs(),
-                                llmBridge: llmBridgeForInput,
-                                onLLMChanged: handleLLMChanged
-                            )
-                            .environmentObject(settings)
-                            .background(Color(.systemBackground))
-                        }
+                    VStack(spacing: 0) {
+                        Divider()
+                        
+                        MessageInputView(
+                            text: $newMessage,
+                            isLoading: llmBridge.isLoading,
+                            shouldFocus: isNewConversation,
+                            onSend: sendMessage,
+                            selectedImage: $selectedImage,
+                            selectedPDFText: $selectedPDFText,
+                            selectedTXTText: $selectedTXTText,
+                            isInputFocused: $isInputFocused,
+                            selectedLLM: $selectedLLM,
+                            selectedModel: $selectedModel,
+                            enabledLLMs: settings.getEnabledLLMs(),
+                            llmBridge: llmBridgeForInput,
+                            onLLMChanged: handleLLMChanged
+                        )
+                        .environmentObject(settings)
+                        .background(Color(.systemBackground))
                     }
                 }
             }
@@ -185,7 +191,7 @@ struct ChatView: View {
             hideKeyboard()
             isInputFocused = false
         })
-        .navigationTitle(selectedModel)
+        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -209,13 +215,8 @@ struct ChatView: View {
         .onAppear {
             isInputFocused = isNewConversation
             
-            isModelLoading = true
-            isModelLoadingFailed = false
-            
             loadAvailableModels()
             loadConversationHistory()
-            
-            setupNotificationObservers()
         }
         .onDisappear {
             NotificationCenter.default.removeObserver(self)
@@ -260,18 +261,10 @@ struct ChatView: View {
                             saveSelectedModel(selectedModel)
                         }
                     }
-                    
-                    self.isModelLoading = false
-                    self.isModelLoadingFailed = false
                 }
             } catch {
-                print("l_models_error".localized, error.localizedDescription)
-                await MainActor.run {
-                    self.isModelLoading = false
-                    self.isModelLoadingFailed = true
-                    self.alertMessage = String(format: "l_cannot_load_models".localized, error.localizedDescription)
-                    self.showAlert = true
-                }
+                let message = String(format: "l_cannot_load_models".localized, error.localizedDescription)
+                showToast(message)
             }
         }
     }
@@ -398,34 +391,14 @@ struct ChatView: View {
                     }
                 }
             } catch {
-                await MainActor.run {
-                    alertMessage = String(format: "l_cannot_delete_message".localized, error.localizedDescription)
-                    showAlert = true
-                }
+                let message = String(format: "l_cannot_delete_message".localized, error.localizedDescription)
+                showToast(message)
             }
         }
     }
     
     private func saveSelectedModel(_ model: String) {
         UserDefaults.standard.set(model, forKey: selectedModelKey)
-    }
-    
-    private func setupNotificationObservers() {
-        NotificationCenter.default.addObserver(
-            forName: Notification.Name("OllamaServerURLChanged"),
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let urlString = notification.userInfo?["url"] as? String,
-               let url = URL(string: urlString) {
-                // Note: URL이 변경되면 앱 재시작이 필요합니다
-                // 현재 ChatView에서는 즉시 반영되지 않습니다
-                
-                isModelLoading = true
-                isModelLoadingFailed = false
-                loadAvailableModels()
-            }
-        }
     }
     
     private func formatAllMessages() -> String {
@@ -476,7 +449,12 @@ struct ChatView: View {
         Task {
             do {
                 let conversations = try databaseService.getQuestionsForGroup(groupId: conversationId)
-                
+                if conversations.count > 0 {
+                    self.navTitle = conversations[0].question
+                } else {
+                    self.navTitle = "l_new_conversation".localized
+                }
+
                 await MainActor.run {
                     llmBridge.messages.removeAll()
                     
@@ -501,6 +479,7 @@ struct ChatView: View {
     
     private func saveMessageToDatabase(question: String, answer: String, image: UIImage?, engine: String) async {
         do {
+            navTitle = question
             var imageBase64: String? = nil
             if let image = image {
                 imageBase64 = encodeImageToBase64(image)

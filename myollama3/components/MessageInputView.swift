@@ -143,8 +143,8 @@ struct MessageInputView: View {
 
             // Main input area
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("메시지를 입력하세요...", text: $text, axis: .vertical)
-                    .font(.system(size: 14))
+                TextField("l_message_input_placeholder".localized, text: $text, axis: .vertical)
+                    .font(.system(size: 16))
                     .focused($isFocused)
                     .lineLimit(1...4)
                     .padding(.horizontal, 12)

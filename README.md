@@ -1,8 +1,8 @@
-# LLM Client - for Ollama
+# LLM Client - for Multiple AI Providers
 
 [한국어](README-ko.md) | [日本語](README-jp.md) | English
 
-MyOllama3 is an iOS application developed with SwiftUI that provides conversational AI chatbot functionality by connecting to local or remote Ollama servers.
+MyOllama3 is an iOS application developed with SwiftUI that provides conversational AI chatbot functionality by connecting to multiple AI providers including Ollama servers, LMStudio, Claude API, and OpenAI API.
 
 ![poster](./captures.jpg)
 
@@ -13,13 +13,28 @@ MyOllama3 is an iOS application developed with SwiftUI that provides conversatio
 
 ## 📱 Project Overview
 
-This app is a **local AI conversation application** designed for users who prioritize **privacy protection**. It provides an intuitive interface for interacting with large language models (LLM) running locally through the Ollama API, with all conversation content securely stored only on the user's device.
+This app is a **unified AI conversation application** designed for users who prioritize **privacy protection** and **flexibility**. It provides an intuitive interface for interacting with multiple large language model (LLM) providers, with all conversation content securely stored only on the user's device.
 
 ## ✨ Core Features
 
+### 🤖 Multi-Provider AI Support
+- **Ollama Integration**: Connect to local or remote Ollama servers
+- **LMStudio Compatibility**: Support for LMStudio local inference server
+- **Claude API**: Direct integration with Anthropic's Claude models
+- **OpenAI API**: Support for GPT models via OpenAI API
+- **Dynamic Switching**: Seamlessly switch between providers during conversations
+- **Provider Persistence**: Automatically remember last used LLM provider and model
+
+### 🔄 Enhanced User Experience
+- **Real-time Model Updates**: Available models automatically refresh when switching providers
+- **Persistent Selections**: Last used LLM and model automatically restored on app launch
+- **Dynamic Configuration**: All settings applied in real-time without app restart
+- **Connection Status**: Real-time monitoring of server/API connectivity
+- **Flexible URL Handling**: Support for empty/invalid URLs with graceful error handling
+
 ### 🤖 AI Conversation Features
 - **Real-time Streaming Responses**: Fast real-time AI responses with streaming support
-- **Multiple Model Support**: All AI models provided by Ollama (Llama, Mistral, Qwen, CodeLlama, etc.)
+- **Multiple Model Support**: All AI models from supported providers (Llama, Mistral, Qwen, GPT, Claude, etc.)
 - **Multimodal Conversations**: Support for image attachments and image analysis through vision models
 - **Document Processing**: PDF and text file upload and analysis capabilities
 - **File Attachment Support**: Support for various file formats including images (JPG, PNG, GIF, etc.), PDF documents, and text files
@@ -30,18 +45,19 @@ This app is a **local AI conversation application** designed for users who prior
 - **Persistent Storage**: Automatic saving of all conversation history using SQLite database
 - **Conversation Search**: Keyword-based conversation content search functionality
 - **Conversation Restoration**: Load and continue previous conversations seamlessly
-- **Server-based Management**: Separate management of conversations with different Ollama servers
+- **Provider-based Management**: Separate management of conversations with different AI providers
 - **Message Management**: Copy, share, and delete individual messages with context menus
 - **Full Conversation Export**: Export entire conversations as text for external use
 - **Conversation Deletion**: Complete conversation removal with confirmation
 
 ### ⚙️ Advanced Settings
+- **Multi-Provider Configuration**: Manage settings for Ollama, LMStudio, Claude, and OpenAI separately
+- **API Key Management**: Secure storage and management of Claude and OpenAI API keys
 - **AI Parameter Adjustment**: Fine-tuning of Temperature (0.1-2.0), Top P (0.1-1.0), Top K (1-100)
 - **Custom Instructions**: System prompt settings for AI behavior customization
-- **Server Connection Management**: Support for multiple Ollama servers and real-time connection status monitoring
+- **Connection Testing**: Built-in connectivity testing for all supported providers
 - **Settings Persistence**: All settings automatically saved and restored
 - **Real-time Settings Application**: Immediate application of setting changes without app restart
-- **Connection Testing**: Built-in server connectivity testing functionality
 - **Data Management**: Complete conversation data deletion with confirmation
 
 ### 🌍 User Experience
@@ -69,32 +85,47 @@ myollama3/
 ├── 📱 UI Views
 │   ├── ContentView.swift          # Main screen (conversation list and new conversation)
 │   ├── ChatView.swift            # Chat interface (real-time conversation)
-│   ├── SettingsView.swift        # Settings screen (server and AI parameters)
+│   ├── SettingsView.swift        # Multi-provider settings screen
 │   ├── WelcomeView.swift         # Onboarding screen (first launch guide)
 │   └── AboutView.swift           # App information and usage guide
 │
 ├── 🧩 Components
 │   ├── MessageBubble.swift       # Message bubble UI (markdown rendering)
-│   ├── MessageInputView.swift    # Message input field (file attachment support)
+│   ├── MessageInputView.swift    # Enhanced input with dynamic model loading
 │   ├── DocumentPicker.swift      # Document selection and processing
 │   ├── CameraPicker.swift        # Camera integration component
 │   └── ShareSheet.swift          # Native sharing functionality
 │
 ├── ⚙️ Services
-│   ├── OllamaService.swift       # Ollama API communication and stream processing
+│   ├── swift_llm_bridge.swift   # Unified multi-provider LLM communication
 │   └── DatabaseService.swift    # SQLite database management
 │
 ├── 🔧 Utils & Extensions
 │   ├── AppColor.swift           # Adaptive color theme management
 │   ├── ImagePicker.swift        # Camera/gallery image selection
 │   ├── Localized.swift          # Multilingual string extensions
-│   └── KeyboardExtensions.swift # Keyboard management utilities
+│   ├── KeyboardExtensions.swift # Keyboard management utilities
+│   └── SettingsManager.swift    # Centralized settings and persistence management
 │
 └── 🌍 Localization
     ├── ko.lproj/                # Korean (default)
     ├── en.lproj/                # English
     └── ja.lproj/                # Japanese
 ```
+
+### 🔧 Key Architecture Changes
+
+#### Dynamic Configuration System
+- **Removed Static Configuration**: Eliminated hardcoded server settings
+- **UserDefaults Integration**: All configurations now dynamically read from persistent storage
+- **Real-time Updates**: Settings changes applied immediately without app restart
+- **Provider Switching**: Seamless switching between different AI providers
+
+#### Enhanced LLM Bridge
+- **Multi-Provider Support**: Single unified interface for all supported AI providers
+- **Dynamic Base URL**: Flexible URL handling with empty string support
+- **Provider Detection**: Automatic provider identification and appropriate API handling
+- **Persistent State**: Last used provider and model automatically restored
 
 ## 🛠️ Technology Stack
 
@@ -143,18 +174,33 @@ CREATE TABLE IF NOT EXISTS questions(
 ## 🚀 Usage
 
 ### 1. Initial Setup
-1. **Prepare Ollama Server**: Run Ollama server locally or on network
+
+#### For Ollama/LMStudio (Local Servers)
+1. **Prepare Server**: Run Ollama or LMStudio server locally or on network
 2. **First App Launch**: Check server setup guide on welcome screen
-3. **Enter Server Address**: Go to Settings → Ollama Server Settings and enter URL (e.g., `http://192.168.0.1:11434`)
-4. **Connection Test**: Test connection with "Check Server Connection Status" button
-5. **Configure AI Parameters**: Adjust Temperature, Top P, Top K values as needed
+3. **Enter Server Address**: Go to Settings → LLM Servers and enter URL (e.g., `http://192.168.0.1:11434`)
+4. **Enable Provider**: Toggle on Ollama Server or LMStudio
+5. **Connection Test**: Test connection with "Check Server Connection Status" button
+
+#### For Claude/OpenAI (API Services)
+1. **Obtain API Key**: Get your API key from Anthropic or OpenAI
+2. **Enable Provider**: Go to Settings → Toggle on Claude API or OpenAI API
+3. **Enter API Key**: Input your API key in the respective field
+4. **Configure Parameters**: Adjust Temperature, Top P, Top K values as needed
 
 ### 2. Starting a Conversation
 1. **New Conversation**: Touch "Start New Conversation" button on main screen
-2. **Model Selection**: Select AI model to use from dropdown menu
-3. **Message Input**: Enter questions or instructions in bottom input field
-4. **File Attachment**: Add images, PDFs, or text files using the paperclip icon
-5. **Send Message**: Use arrow button or Enter key to send
+2. **Provider Selection**: Choose your AI provider (Ollama, LMStudio, Claude, or OpenAI) from the dropdown
+3. **Model Selection**: Available models will automatically update based on selected provider
+4. **Message Input**: Enter questions or instructions in bottom input field
+5. **File Attachment**: Add images, PDFs, or text files using the paperclip icon (where supported)
+6. **Send Message**: Use arrow button or Enter key to send
+
+### 2.1. Provider-Specific Features
+- **Ollama/LMStudio**: Full multimodal support with local processing
+- **Claude**: Advanced reasoning with image analysis capabilities
+- **OpenAI**: GPT models with comprehensive feature support
+- **Auto-Restoration**: Last used provider and model automatically restored on app restart
 
 ### 3. Advanced Features
 - **Conversation Search**: Search previous conversations with magnifying glass icon on main screen
@@ -186,9 +232,10 @@ CREATE TABLE IF NOT EXISTS questions(
 - Selects only from K highest probability candidates when choosing next token
 - Lower values for consistency, higher values for creativity
 
-## 🔧 Ollama Server Setup
+## 🔧 Provider Setup Guide
 
-### Local Server (macOS/Linux)
+### Ollama Server Setup
+#### Local Server (macOS/Linux)
 ```bash
 # Install Ollama
 curl -fsSL https://ollama.ai/install.sh | sh
@@ -204,11 +251,29 @@ ollama pull llava              # For image analysis
 ollama pull codellama         # For code assistance
 ```
 
-### Network Configuration
+#### Network Configuration
 - **Firewall**: Open port 11434
 - **Router**: Set up port forwarding if needed
 - **IP Address**: Enter correct server IP in app settings
 - **Connection Testing**: Use built-in connection test feature
+
+### LMStudio Setup
+1. **Download LMStudio**: Install from [https://lmstudio.ai](https://lmstudio.ai)
+2. **Load Model**: Download and load your preferred model
+3. **Start Server**: Enable the local server (default port: 1234)
+4. **Configure App**: Enter LMStudio server URL in app settings
+
+### Claude API Setup
+1. **Get API Key**: Sign up at [https://console.anthropic.com](https://console.anthropic.com)
+2. **Create API Key**: Generate an API key in your account settings
+3. **Configure App**: Enter API key in Settings → Claude API
+4. **Enable Provider**: Toggle on Claude API in the app
+
+### OpenAI API Setup
+1. **Get API Key**: Sign up at [https://platform.openai.com](https://platform.openai.com)
+2. **Create API Key**: Generate an API key in your account
+3. **Configure App**: Enter API key in Settings → OpenAI API
+4. **Enable Provider**: Toggle on OpenAI API in the app
 
 ## 🌍 Multilingual Support
 
@@ -242,24 +307,34 @@ MyOllama3 prioritizes user privacy:
 
 ## 🚀 Supported Models
 
-Supports all models provided by Ollama:
-
-### Conversational Models
+### Ollama Models
+All models available through Ollama are supported:
 - **Llama 2/3**: General conversation models with excellent performance
 - **Mistral**: High-performance conversation model with multilingual support
 - **Qwen**: Advanced multilingual support model with strong reasoning
 - **Gemma**: Google's lightweight and efficient model
-
-### Specialized Models
 - **CodeLlama**: Programming and development assistance
 - **DeepSeek-Coder**: Advanced coding specialist with multiple languages
 - **LLaVA**: Image recognition and visual analysis model
 - **Bakllava**: Advanced vision-language model for complex visual tasks
 
-### Multimodal Models
-- **LLaVA variants**: Image understanding and description
-- **Bakllava**: Enhanced image and document analysis
-- **Vision models**: Support for various vision-enabled models
+### LMStudio Models
+All models compatible with LMStudio's OpenAI-compatible API:
+- **Quantized Models**: GGUF format models with various quantization levels
+- **Local Models**: Downloaded models running locally
+- **Custom Models**: User-imported models and fine-tuned versions
+
+### Claude Models (Anthropic)
+- **Claude 3 Haiku**: Fast and efficient for everyday tasks
+- **Claude 3 Sonnet**: Balanced performance for most use cases
+- **Claude 3 Opus**: Most capable model for complex tasks
+- **Claude 3.5 Sonnet**: Latest model with improved capabilities
+
+### OpenAI Models
+- **GPT-4**: Latest multimodal model with vision capabilities
+- **GPT-4 Turbo**: Optimized version with larger context window
+- **GPT-3.5 Turbo**: Fast and cost-effective model
+- **Custom Models**: Fine-tuned models available in your account
 
 ## 🛠️ Development and Build
 

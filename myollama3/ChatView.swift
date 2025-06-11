@@ -188,49 +188,6 @@ struct ChatView: View {
         .navigationTitle(selectedModel)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                if !availableModels.isEmpty {
-                    Menu {
-                        ForEach(availableModels, id: \.self) { model in
-                            Button(action: {
-                                let oldModel = selectedModel
-                                selectedModel = model
-                                saveSelectedModel(model)
-                                if !llmBridge.messages.isEmpty && oldModel != model {
-                                    alertMessage = String(format: "l_model_changed".localized, selectedModel)
-                                    presentToast(
-                                        ToastValue(
-                                            icon: Image(systemName: "info.circle"), message: alertMessage
-                                        )
-                                    )
-                                }
-                            }) {
-                                HStack {
-                                    Text(model)
-                                    Spacer()
-                                    if selectedModel == model {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(Color.appPrimary)
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(selectedModel)
-                                .font(.headline)
-                            
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
-                                .foregroundColor(Color.appIcon)
-                        }
-                    }
-                } else {
-                    Text("l_conversation".localized)
-                        .font(.headline)
-                }
-            }
-            
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     if !llmBridge.messages.isEmpty {

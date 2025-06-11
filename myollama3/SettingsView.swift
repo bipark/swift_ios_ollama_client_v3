@@ -14,7 +14,6 @@ struct SettingsView: View {
     @StateObject private var settings = SettingsManager()
     
     @State private var showAlert = false
-//    @State private var alertMessage = ""
     @State private var isCheckingConnection = false
     @State private var isCheckingLMStudioConnection = false
     @State private var isSaving = false
@@ -283,13 +282,6 @@ struct SettingsView: View {
                     .shadow(radius: 4)
             }
         }
-//        .alert(alertMessage, isPresented: $showAlert) {
-//            Button("l_ok".localized, role: .cancel) {
-//                if alertMessage == "l_server_check_complete".localized {
-//                    dismiss()
-//                }
-//            }
-//        }
         .alert("l_server_connection_failed".localized, isPresented: $showConfirmationAlert) {
             Button("l_cancel".localized, role: .cancel) {}
             Button("l_save_anyway".localized, role: .destructive) {

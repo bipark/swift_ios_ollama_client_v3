@@ -23,7 +23,6 @@ struct ChatView: View {
     @State private var selectedModel: String
     @State private var availableModels: [String] = []
     @State private var showAlert = false
-    @State private var alertMessage = ""
     @FocusState private var isInputFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var isNewConversation: Bool
@@ -231,9 +230,6 @@ struct ChatView: View {
         } message: {
             Text("l_delete_message_confirm".localized)
         }
-        .alert(alertMessage, isPresented: $showAlert) {
-            Button("l_ok".localized, role: .cancel) {}
-        }
         .sheet(isPresented: $showShareAllSheet) {
             ShareSheet(activityItems: [formatAllMessages()])
         }
@@ -290,53 +286,33 @@ struct ChatView: View {
             if let pdfText = pdfTextToSend {
                 print("Processing PDF text, length: \(pdfText.count)")
                 if !finalMessage.isEmpty {
-                    finalMessage += "\n\n[PDF 문서 내용]\n" + pdfText
+                    finalMessage += "\n\n[PDF Contents]\n" + pdfText
                 } else {
-                    finalMessage = "[PDF 문서 내용]\n" + pdfText
+                    finalMessage = "[PDF Contents]\n" + pdfText
                 }
                 
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
-                
-                presentToast(
-                    ToastValue(
-                        icon: Image(systemName: "doc.text"), message: "PDF 문서가 첨부되었습니다"
-                    )
-                )
             }
             
             if let txtText = txtTextToSend {
                 print("Processing TXT text, length: \(txtText.count)")
                 print("TXT content preview: \(String(txtText.prefix(100)))...")
                 if !finalMessage.isEmpty {
-                    finalMessage += "\n\n[텍스트 파일 내용]\n" + txtText
+                    finalMessage += "\n\n[Text File Contents]\n" + txtText
                 } else {
-                    finalMessage = "[텍스트 파일 내용]\n" + txtText
+                    finalMessage = "[Text File Contents]\n" + txtText
                 }
                 
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
-                
-                presentToast(
-                    ToastValue(
-                        icon: Image(systemName: "doc.plaintext"), message: "텍스트 파일이 첨부되었습니다"
-                    )
-                )
             }
-            
-            print("Final message to send: '\(finalMessage)'")
-            
+                        
             newMessage = ""
             
             if imageToSend != nil {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
-                
-                presentToast(
-                    ToastValue(
-                        icon: Image(systemName: "info.circle"), message: "l_image_attached".localized
-                    )
-                )
             }
             
             Task {
@@ -437,8 +413,6 @@ struct ChatView: View {
                 
         return formattedText
     }
-    
-    // MARK: - Database Methods
     
     private func getAvailableModels() async throws -> [String] {
         let models = await llmBridge.getAvailableModels()

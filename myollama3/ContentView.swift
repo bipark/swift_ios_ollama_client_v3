@@ -107,14 +107,6 @@ struct ContentView: View {
         }
     }
     
-    private func getServerName(from urlString: String) -> String {
-        if let url = URL(string: urlString) {
-            let host = url.host ?? "l_unknown_server".localized
-            return "\(host):\(url.port ?? 0)"
-        }
-        return "l_unknown_server".localized
-    }
-    
     private func loadConversations() {
         isLoading = true
         
